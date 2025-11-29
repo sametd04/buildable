@@ -1,25 +1,50 @@
 [
-  {
-    "id": "OAK-TT-001",
+{
+  "id": "OAK-TT-001",
     "name": "Table Top with Live Edge",
     "category": "Wood/Furniture",
-    "src": "https://media.cdn.bauhaus/m/566825-1/prod_large_square.webp?width=1920&quality=75",
+    "src":"https://media.cdn.bauhaus/m/566825-1/prod_large_square.webp?width=1920&quality=75",
     "description": "Heavy-duty Oak table top (Prod. Nr. 27314746) with continuous lamellae and an oiled finish. Dimensions: 200 cm L x 80 cm W x 4 cm T. Net weight: 44.8 kg. Price: 325.00 € (incl. VAT). Aesthetic keywords: rustic, natural, heavy."
   },
   {
     "id": "WALNUT-TT-002",
     "name": "Pur Iternal Black Edition Table Top",
     "category": "Wood/Furniture",
-    "src": "https://media.cdn.bauhaus/m/284260/prod_large_square.webp?width=1920&quality=75",
+    "scr": "https://media.cdn.bauhaus/m/284260/prod_large_square.webp?width=1920&quality=75",
     "description": "Solid American Walnut table top (Prod. Nr. 27255915) with finger-jointed lamellae and a UV-oil finish. Dimensions: 200 cm L x 80 cm W x 2.7 cm T. Net weight: 28.9 kg. Price: 235.00 € (incl. VAT)."
-  },
+  },  
   {
     "id": "STEEL-LEG-PUR-X-001",
     "name": "Pur Iternal Black Edition Table Leg",
     "category": "Metal/Structural",
     "src": "https://media.cdn.bauhaus/m/568557/prod_large_square.webp?width=1920&quality=75",
+        "description": "X-shaped table leg set (Prod. Nr. 27197761) made of black powder-coated steel. Dimensions: 700 mm W x 723 mm H. Net weight: 16.0 kg (set of 2). Suitable for table tops 80–90 cm wide. Price: 265.00 € per unit (incl. VAT)."
+  },
+  {
+    "id": "SS-SCREW-2.9X13",
+    "name": "Marinetech Sheet Metal Screw",
+    "category": "Fastener/Stainless Steel",
+    "screw": "https://media.cdn.bauhaus/m/512219/prod_large_square.webp?width=1920&quality=75",
+    "description": "Corrosion-resistant A4 Stainless Steel screw (Prod. Nr. 23655285) with a Countersunk head and Pozidriv drive. Dimensions: 2.9 mm diameter x 13.0 mm length. Suitable for fastening thin sheet metal. Price: 0.21 € per piece (incl. VAT)."
+  },
+  {
+    "id": "STEEL-LEG-PUR-V-002",
+    "name": "Pur Iternal Black Edition Table Leg",
+    "category": "Metal/Structural",
+    "src": "https://media.cdn.bauhaus/m/568561/prod_large_square.webp?width=1920&quality=75",
     "description": "X-shaped table leg set (Prod. Nr. 27197761) made of black powder-coated steel. Dimensions: 700 mm W x 723 mm H. Net weight: 16.0 kg (set of 2). Suitable for table tops 80–90 cm wide. Price: 265.00 € per unit (incl. VAT)."
   },
+  {
+    "id": "STEEL-LEG-PUR-U-003",
+    "name": "Pur Iternal Black Edition Table Leg",
+    "category": "Metal/Structural",
+    "src":"https://media.cdn.bauhaus/m/568559/prod_large_square.webp?width=1920&quality=75",
+    "description": "U-shaped table leg set (Prod. Nr. 27197770) made of black powder-coated steel. Dimensions: 800 mm W x 723 mm H. Net weight: 19.2 kg (set of 2). Designed for table tops 80–90 cm wide. Price: 265.00 € per unit (incl. VAT)."
+  },
+
+
+
+  
   {
     "id": "SS-SCREW-2.9X13",
     "name": "Marinetech Sheet Metal Screw",
