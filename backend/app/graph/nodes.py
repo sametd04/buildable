@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 from app.core.config import settings
 from app.graph.state import AgentState
 from app.services.tools import get_inventory_retriever_tool
+from app.utils.parse_prompt import load_prompt
 
 
 # Initialize LLM based on configuration
@@ -42,31 +43,18 @@ def node_style_optimizer(state: AgentState) -> Dict[str, Any]:
         "user_query": user_query,
     }
 
+    # Load your markdown template
+    rendered_prompt = load_prompt(
+        prompt_name="optimize_user_query", 
+        variables=prompt_variables
+    )
+
+    if not rendered_prompt:
+        raise ValueError("Failed to load 'optimize_user_query.md' or template is empty")
+
     prompt = ChatPromptTemplate.from_messages([
-        ("system", """
-    User's request: {user_query}
-    """)
+        ("system", rendered_prompt),
     ])
-
-    """
-    prompt = ChatPromptTemplate.from_messages([
-        ("system", ""You are an expert Design Consultant. Your job is to take a short user request 
-        and expand it into a detailed, paragraph-long visual description focusing on mood, texture, 
-        and lighting. Do not list specific parts, just the vibe.
-        
-        Create a rich, evocative description that captures:
-        - The overall aesthetic and mood
-        - Visual textures and finishes
-        - Color palette and lighting atmosphere
-        - The feeling and character of the design
-        - Any thematic elements or style references
-        
-        Keep it focused on the visual and emotional aspects, not on construction details or materials.""),
-        ("human", ""User's request: {user_query}
-
-Expand this into a detailed visual description focusing on the aesthetic, mood, texture, and lighting. 
-Write a paragraph that captures the vibe and feeling of this design.""),
-    ])"""
     
     chain = prompt | llm
     response = chain.invoke({
