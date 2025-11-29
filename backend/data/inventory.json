@@ -24,21 +24,161 @@
     "id": "SS-SCREW-2.9X13",
     "name": "Marinetech Sheet Metal Screw",
     "category": "Fastener/Stainless Steel",
-    "src": "https://media.cdn.bauhaus/m/512219/prod_large_square.webp?width=1920&quality=75",
+    "src": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3f/Placeholder_view_vector.svg/330px-Placeholder_view_vector.svg.png",
     "description": "Corrosion-resistant A4 Stainless Steel screw (Prod. Nr. 23655285) with a Countersunk head and Pozidriv drive. Dimensions: 2.9 mm diameter x 13.0 mm length. Suitable for fastening thin sheet metal. Price: 0.21 € per piece (incl. VAT)."
   },
   {
     "id": "STEEL-LEG-PUR-V-002",
     "name": "Pur Iternal Black Edition Table Leg",
     "category": "Metal/Structural",
-    "src": "https://media.cdn.bauhaus/m/568561/prod_large_square.webp?width=1920&quality=75",
+    "src": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3f/Placeholder_view_vector.svg/330px-Placeholder_view_vector.svg.png",
     "description": "X-shaped table leg set (Prod. Nr. 27197761) made of black powder-coated steel. Dimensions: 700 mm W x 723 mm H. Net weight: 16.0 kg (set of 2). Suitable for table tops 80–90 cm wide. Price: 265.00 € per unit (incl. VAT)."
   },
   {
     "id": "STEEL-LEG-PUR-U-003",
     "name": "Pur Iternal Black Edition Table Leg",
     "category": "Metal/Structural",
-    "src": "https://media.cdn.bauhaus/m/568559/prod_large_square.webp?width=1920&quality=75",
+    "src": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3f/Placeholder_view_vector.svg/330px-Placeholder_view_vector.svg.png",
     "description": "U-shaped table leg set (Prod. Nr. 27197770) made of black powder-coated steel. Dimensions: 800 mm W x 723 mm H. Net weight: 19.2 kg (set of 2). Designed for table tops 80–90 cm wide. Price: 265.00 € per unit (incl. VAT)."
+  },
+  {
+    "id": "OAK-PLANK-RAW-005",
+    "name": "Solid Oak Planed Timber",
+    "category": "Wood/Lumber",
+    "src": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3f/Placeholder_view_vector.svg/330px-Placeholder_view_vector.svg.png",
+    "description": "Kiln-dried raw European Oak planks (Prod. Nr. 20114885). Smooth planed on all four sides. Dimensions: 200 cm L x 20 cm W x 1.8 cm T. Ideal for shelving or furniture construction. Price: 42.50 € (incl. VAT)."
+  },
+  {
+    "id": "WALNUT-PLANK-RAW-006",
+    "name": "American Walnut Craft Board",
+    "category": "Wood/Lumber",
+    "src": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3f/Placeholder_view_vector.svg/330px-Placeholder_view_vector.svg.png",
+    "description": "Dark American Walnut board (Prod. Nr. 20115562) with rich grain patterns. Dimensions: 120 cm L x 15 cm W x 1.9 cm T. High-grade timber for detail work. Price: 38.90 € (incl. VAT)."
+  },
+  {
+    "id": "FINISH-STAIN-001",
+    "name": "Premium Wood Stain - Dark Walnut",
+    "category": "Finishing/Chemicals",
+    "src": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3f/Placeholder_view_vector.svg/330px-Placeholder_view_vector.svg.png",
+    "description": "Deep penetrating oil-based wood stain (Prod. Nr. 25488120). Color: Dark Walnut. Volume: 750ml. Coverage: approx. 10m². Provides weather protection and rich color. Price: 18.95 € (incl. VAT)."
+  },
+  {
+    "id": "FINISH-POLY-002",
+    "name": "Polyurethane Clear Coat - Satin",
+    "category": "Finishing/Chemicals",
+    "src": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3f/Placeholder_view_vector.svg/330px-Placeholder_view_vector.svg.png",
+    "description": "Durable polyurethane varnish (Prod. Nr. 25488155) for interior use. Finish: Satin/Matte. Volume: 1 Liter. Scratch and water-resistant. Price: 24.50 € (incl. VAT)."
+  },
+  {
+    "id": "FAST-SCREW-WOOD-001",
+    "name": "Torx Wood Screws Box",
+    "category": "Fastener/Steel",
+    "src": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3f/Placeholder_view_vector.svg/330px-Placeholder_view_vector.svg.png",
+    "description": "Universal zinc-plated wood screws (Prod. Nr. 10224458) with Torx drive. Dimensions: 4.0 mm x 40 mm. Box quantity: 200 pieces. Self-countersinking head. Price: 12.50 € (incl. VAT)."
+  },
+  {
+    "id": "ADH-GLUE-001",
+    "name": "Express Wood Glue D3",
+    "category": "Adhesive/Chemicals",
+    "src": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3f/Placeholder_view_vector.svg/330px-Placeholder_view_vector.svg.png",
+    "description": "Water-resistant wood glue (Prod. Nr. 12558899) conforming to DIN EN 204 D3. Volume: 500g bottle. Sets in 5-10 minutes. High bond strength. Price: 8.90 € (incl. VAT)."
+  },
+  {
+    "id": "ABR-SAND-001",
+    "name": "Multi-Grit Sandpaper Pack",
+    "category": "Consumable/Abrasive",
+    "src": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3f/Placeholder_view_vector.svg/330px-Placeholder_view_vector.svg.png",
+    "description": "Assorted sandpaper sheets for wood (Prod. Nr. 22556688). Includes grits: 80, 120, and 240. Dimensions: 230mm x 280mm. Pack of 15 sheets. Price: 6.99 € (incl. VAT)."
+  },
+  {
+    "id": "TOOL-CLAMP-001",
+    "name": "One-Handed Bar Clamp",
+    "category": "Tools/Hand",
+    "src": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3f/Placeholder_view_vector.svg/330px-Placeholder_view_vector.svg.png",
+    "description": "Quick-release bar clamp (Prod. Nr. 11223344). Clamping range: 300 mm. Clamping force: up to 120 kg. Non-marring pads included. Price: 16.50 € (incl. VAT)."
+  },
+  {
+    "id": "HARD-FOOT-001",
+    "name": "Adjustable Leveling Feet",
+    "category": "Hardware/Furniture",
+    "src": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3f/Placeholder_view_vector.svg/330px-Placeholder_view_vector.svg.png",
+    "description": "Heavy-duty screw-in leveling feet (Prod. Nr. 27889911). Thread: M10. Base diameter: 40mm. Set of 4. Ideal for uneven floors. Price: 9.20 € (incl. VAT)."
+  },
+  {
+    "id": "PWR-SAW-CIRC-001",
+    "name": "Corded Circular Saw 1400W",
+    "category": "Tools/Power",
+    "src": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3f/Placeholder_view_vector.svg/330px-Placeholder_view_vector.svg.png",
+    "description": "Handheld circular saw (Prod. Nr. 22336655). Power: 1400W. Blade diameter: 190mm. Max cutting depth: 66mm. Includes parallel guide. Price: 89.00 € (incl. VAT)."
+  },
+  {
+    "id": "PWR-SAW-TBL-002",
+    "name": "Compact Table Saw",
+    "category": "Tools/Power",
+    "src": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3f/Placeholder_view_vector.svg/330px-Placeholder_view_vector.svg.png",
+    "description": "Portable site table saw (Prod. Nr. 22337788). Power: 2000W. Table size: 640 x 487 mm. Includes dust extraction port and carbide blade. Price: 249.00 € (incl. VAT)."
+  },
+  {
+    "id": "PWR-DRILL-001",
+    "name": "18V Cordless Drill Driver",
+    "category": "Tools/Power",
+    "src": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3f/Placeholder_view_vector.svg/330px-Placeholder_view_vector.svg.png",
+    "description": "Lithium-ion cordless drill (Prod. Nr. 20001122). Torque: 50 Nm. Includes 2x 2.0Ah batteries and charger. 13mm keyless chuck. Price: 129.00 € (incl. VAT)."
+  },
+  {
+    "id": "ACC-BIT-001",
+    "name": "Brad Point Wood Drill Bits",
+    "category": "Consumable/Accessories",
+    "src": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3f/Placeholder_view_vector.svg/330px-Placeholder_view_vector.svg.png",
+    "description": "Precision wood drill bit set (Prod. Nr. 20002233). Sizes: 3, 4, 5, 6, 8, 10 mm. Made from CV steel for clean holes in hard and soft wood. Price: 14.50 € (incl. VAT)."
+  },
+  {
+    "id": "PWR-SANDER-001",
+    "name": "Random Orbit Sander 125mm",
+    "category": "Tools/Power",
+    "src": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3f/Placeholder_view_vector.svg/330px-Placeholder_view_vector.svg.png",
+    "description": "Ergonomic orbit sander (Prod. Nr. 22114455). Disc size: 125mm. Power: 300W. Variable speed control. Velcro sanding sheet attachment. Price: 65.00 € (incl. VAT)."
+  },
+  {
+    "id": "TOOL-MEAS-001",
+    "name": "Heavy Duty Measuring Tape",
+    "category": "Tools/Measurement",
+    "src": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3f/Placeholder_view_vector.svg/330px-Placeholder_view_vector.svg.png",
+    "description": "Robust tape measure with rubber grip (Prod. Nr. 2998811). Length: 5 meters. Blade width: 25mm. Magnetic hook tip. Accuracy Class II. Price: 12.95 € (incl. VAT)."
+  },
+  {
+    "id": "TOOL-BRUSH-001",
+    "name": "Varnish Paintbrush Set",
+    "category": "Tools/Applicator",
+    "src": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3f/Placeholder_view_vector.svg/330px-Placeholder_view_vector.svg.png",
+    "description": "Synthetic bristle brushes optimized for varnishes (Prod. Nr. 2556633). Set of 3 (30mm, 50mm, 70mm). Soft tip for streak-free finish. Price: 9.50 € (incl. VAT)."
+  },
+  {
+    "id": "DEC-RUNNER-001",
+    "name": "Rustic Linen Table Runner",
+    "category": "Decor/Textile",
+    "src": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3f/Placeholder_view_vector.svg/330px-Placeholder_view_vector.svg.png",
+    "description": "Natural woven table runner (Prod. Nr. 33221100). Material: 100% Linen. Color: Natural Beige. Dimensions: 40 cm x 150 cm. Machine washable. Price: 22.00 € (incl. VAT)."
+  },
+  {
+    "id": "DEC-CANDLE-001",
+    "name": "White Pillar Candles",
+    "category": "Decor/Lighting",
+    "src": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3f/Placeholder_view_vector.svg/330px-Placeholder_view_vector.svg.png",
+    "description": "Set of 3 unscented pillar candles (Prod. Nr. 33445566). Height: 10cm, 12cm, 15cm. Diameter: 7cm. Burn time: approx. 30 hours each. Price: 11.50 € (incl. VAT)."
+  },
+  {
+    "id": "DEC-HOLDER-001",
+    "name": "Matte Black Candle Holder",
+    "category": "Decor/Accessory",
+    "src": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3f/Placeholder_view_vector.svg/330px-Placeholder_view_vector.svg.png",
+    "description": "Modern industrial style candle holder (Prod. Nr. 33667788). Material: Powder-coated metal. Fits standard pillar candles up to 8cm diameter. Price: 14.95 € (incl. VAT)."
+  },
+  {
+    "id": "DEC-MAT-001",
+    "name": "Woven Jute Placemats",
+    "category": "Decor/Textile",
+    "src": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3f/Placeholder_view_vector.svg/330px-Placeholder_view_vector.svg.png",
+    "description": "Eco-friendly round placemats (Prod. Nr. 33990011). Material: 100% Jute. Diameter: 38cm. Set of 4. Heat resistant and non-slip. Price: 19.90 € (incl. VAT)."
   }
 ]
