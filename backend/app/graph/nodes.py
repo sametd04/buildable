@@ -35,8 +35,16 @@ def node_style_optimizer(state: AgentState) -> Dict[str, Any]:
     """
     llm = get_llm()
     
+
     prompt = ChatPromptTemplate.from_messages([
-        ("system", """You are an expert Design Consultant. Your job is to take a short user request 
+        ("system", """
+    User's request: {user_query}
+    """)
+    ])
+
+    """
+    prompt = ChatPromptTemplate.from_messages([
+        ("system", ""You are an expert Design Consultant. Your job is to take a short user request 
         and expand it into a detailed, paragraph-long visual description focusing on mood, texture, 
         and lighting. Do not list specific parts, just the vibe.
         
@@ -47,12 +55,12 @@ def node_style_optimizer(state: AgentState) -> Dict[str, Any]:
         - The feeling and character of the design
         - Any thematic elements or style references
         
-        Keep it focused on the visual and emotional aspects, not on construction details or materials."""),
-        ("human", """User's request: {user_query}
+        Keep it focused on the visual and emotional aspects, not on construction details or materials.""),
+        ("human", ""User's request: {user_query}
 
 Expand this into a detailed visual description focusing on the aesthetic, mood, texture, and lighting. 
-Write a paragraph that captures the vibe and feeling of this design."""),
-    ])
+Write a paragraph that captures the vibe and feeling of this design.""),
+    ])"""
     
     chain = prompt | llm
     response = chain.invoke({
@@ -177,7 +185,13 @@ class ClerkOutput(BaseModel):
     missing_parts_description: Optional[str] = Field(
         default=None,
         description="Description of missing parts if no suitable matches were found. "
-        "Example: 'No titanium pipes found' or 'No specialized LED strips available'."
+        "Example: 'No titanium pipes found' or 'No specialized LED strips available'. "
+        "Also include the items you found in the found_items field."
+    )
+    found_items: List[str] = Field(
+        default_factory=list,
+        description="List of items that were found in the inventory."
+        "Example: ['steel pipe', 'wood plank', 'LED light']"
     )
     is_successful: bool = Field(
         description="Whether suitable inventory items were found for the construction plan. "
@@ -221,10 +235,11 @@ def node_inventory_clerk(state: AgentState) -> Dict[str, Any]:
     selected_ids = set()
     all_found_items = []
     
-    for search_term in search_terms[:10]:  # Limit to 10 searches
+    # TODO: CHANGE THIS!
+    for search_term in search_terms:  # Limit to 10 searches
         try:
-            # Use the tool to search
-            search_results = search_tool.invoke({"query": search_term})
+            # Use the tool to search - tool expects a string, not a dict
+            search_results = search_tool.invoke(search_term)
             
             # Extract IDs from results
             if isinstance(search_results, list):
@@ -241,7 +256,7 @@ def node_inventory_clerk(state: AgentState) -> Dict[str, Any]:
                         item_data = doc
                     
                     if item_data:
-                        item_id = item_data.get("id") or (str(item_data.get("_id")) if item_data.get("_id") else None)
+                        item_id = str(item_data.get("_id"))
                         if item_id:
                             selected_ids.add(item_id)
                             all_found_items.append({
@@ -251,7 +266,10 @@ def node_inventory_clerk(state: AgentState) -> Dict[str, Any]:
                                 "category": item_data.get("category", ""),
                             })
         except Exception as e:
-            # Continue if a search fails
+            # Log error but continue with other search terms
+            # This helps debug tool invocation issues
+            import logging
+            logging.warning(f"Search failed for term '{search_term}': {e}")
             continue
     
     # Format found items for validation
@@ -267,9 +285,9 @@ def node_inventory_clerk(state: AgentState) -> Dict[str, Any]:
         1. Analyze the construction plan and the found inventory items
         2. Determine if the found items are suitable matches for the materials/parts needed
         3. If matches are good: Set is_successful=True and return the item IDs
-        4. If matches are poor or missing: Set is_successful=False and describe what's missing
-        
-        Be strict in your evaluation. Only set is_successful=True if you found suitable items 
+        4. If matches are poor or missing: Set is_successful=False and describe what's missing, give the items you found and tell the planner to update the plan.
+        5. Ignore requıred tools, finishes and ONLY FOCUS ON RAW MATERIALS.
+        Only set is_successful=True if you found suitable items 
         that actually match the requirements in the construction plan."""),
         ("human", """Construction Plan:
 {construction_plan}
@@ -282,32 +300,32 @@ If they are good matches, return the item IDs and set is_successful=True.
 If they are poor matches or key parts are missing, set is_successful=False and describe what's missing."""),
     ])
     
-    validation_chain = validation_prompt | structured_llm
-    result = validation_chain.invoke({
-        "construction_plan": construction_plan,
-        "found_items": found_items_text,
-    })
+    # validation_chain = validation_prompt | structured_llm
+    # result = validation_chain.invoke({
+    #    "construction_plan": construction_plan,
+    #    "found_items": found_items_text,
+    #})
     
     # Validate IDs are from our found items
-    valid_ids = [
-        item_id for item_id in result.selected_ids
-        if item_id in selected_ids
-    ]
+    #valid_ids = [
+    #    item_id for item_id in result.selected_ids
+    #    if item_id in selected_ids
+    #]
     
     # Prepare return state
     return_state = {
-        "selected_item_ids": valid_ids,
-        "is_clerk_successful": result.is_successful,
+        "selected_item_ids": selected_ids,
+        "is_clerk_successful": True,
     }
     
-    if not result.is_successful:
+    #if not result.is_successful:
         # Provide feedback for the planner
-        return_state["clerk_feedback"] = result.missing_parts_description or (
-            "No suitable inventory items found for the required materials in the construction plan."
-        )
-    else:
+        #return_state["clerk_feedback"] = result.missing_parts_description or (
+        #    "No suitable inventory items found for the required materials in the construction plan. Here are the items I found: " + found_items_text
+        #)
+    #else:
         # Clear any previous feedback on success
-        return_state["clerk_feedback"] = None
+        #return_state["clerk_feedback"] = None
     
     return return_state
 
@@ -380,7 +398,7 @@ def node_flux_generator(state: AgentState) -> Dict[str, Any]:
     """
     from app.services.flux_service import generate_image
     
-    image_url = generate_image(state["flux_prompt"])
+    image_url = generate_image(state["flux_prompt"], "https://www.thecontractchair.co.uk/media/re_branding/ck_uploads/from_tiny_editor/ash-wood-table-top%20(3).webp", )
     
     return {
         "final_image_url": image_url,

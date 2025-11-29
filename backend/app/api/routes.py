@@ -44,11 +44,27 @@ async def build(request: BuildRequest) -> BuildResponse:
         config = {}
         if settings.langfuse_public_key and settings.langfuse_secret_key:
             from langfuse.langchain import CallbackHandler
-            langfuse_handler = CallbackHandler(
-                public_key=settings.langfuse_public_key,
-                secret_key=settings.langfuse_secret_key,
-                base_url=settings.langfuse_base_url,
-            )
+            # Explicitly pass credentials to CallbackHandler
+            # Try base_url first, fallback to host if that doesn't work
+            import os
+            os.environ["LANGFUSE_PUBLIC_KEY"] = settings.langfuse_public_key
+            os.environ["LANGFUSE_SECRET_KEY"] = settings.langfuse_secret_key
+            os.environ["LANGFUSE_BASE_URL"] = settings.langfuse_base_url
+            """
+            try:
+                langfuse_handler = CallbackHandler(
+                    public_key=settings.langfuse_public_key,
+                    # secret_key=settings.langfuse_secret_key,
+                    # base_url=settings.langfuse_base_url,
+                )
+            except TypeError:
+                # If base_url doesn't work, try host parameter
+                langfuse_handler = CallbackHandler(
+                    public_key=settings.langfuse_public_key,
+                    secret_key=settings.langfuse_secret_key,
+                    base_url=settings.langfuse_base_url,
+                )"""
+            langfuse_handler = CallbackHandler()
             config["callbacks"] = [langfuse_handler]
         
         final_state = workflow.invoke(initial_state, config=config if config else None)
