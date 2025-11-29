@@ -1,4 +1,5 @@
 """Database helper for MongoDB connection and inventory operations."""
+
 from typing import List, Dict, Any, Optional
 from pymongo import MongoClient
 from pymongo.database import Database

@@ -16,26 +16,41 @@ async def build(request: BuildRequest) -> BuildResponse:
     """
     POST /build endpoint.
     
-    Fetches inventory from MongoDB, initializes the Graph with user_query and inventory,
+    Initializes the Graph with user_query (inventory is accessed via vector search),
     and returns the final state (Plan, Selected Items, and Image URL).
     """
     try:
-        # Fetch inventory from MongoDB
-        inventory_data = get_inventory()
-        
-        # Initialize state
+        # Initialize state (no need to load inventory into memory)
         initial_state: AgentState = {
             "user_query": request.user_query,
-            "inventory_data": inventory_data,
+            "style_description": "",  # Will be set by style_optimizer node
             "construction_plan": None,
             "selected_item_ids": [],
             "flux_prompt": None,
             "final_image_url": None,
+            "retry_count": 0,
+            "clerk_feedback": None,
+            "status": "processing",
+            "is_clerk_successful": False,
         }
         
         # Get workflow and execute
         workflow = get_workflow()
         final_state = workflow.invoke(initial_state)
+        
+        # Check if the workflow failed due to missing parts
+        status = final_state.get("status", "processing")
+        if status == "failed_no_parts" or (not final_state.get("is_clerk_successful", False) and final_state.get("retry_count", 0) >= 3):
+            return BuildResponse(
+                success=False,
+                user_query=final_state["user_query"],
+                construction_plan=final_state.get("construction_plan"),
+                selected_item_ids=[],
+                selected_items=[],
+                flux_prompt=None,
+                final_image_url=None,
+                error="We couldn't find the specific parts for your request. Please try a different design or use more common materials.",
+            )
         
         # Get full details of selected items
         selected_items = [
