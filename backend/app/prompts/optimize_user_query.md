@@ -6,8 +6,8 @@ Your task is to take the user's raw request — consisting of free text and **re
 
 ## INPUT
 
-**User Text Input:**
-${USER_INPUT}
+### 1. User Text Input
+${user_input}
 
 **Reference Images Content:**
 The visual data from the reference images is provided to you for complete analysis of structure, materials, and finish. **Analyze the visual content to extract all relevant details.**

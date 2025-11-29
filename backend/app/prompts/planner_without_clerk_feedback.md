@@ -8,9 +8,13 @@
 
 ## INPUT
 
-**Optimized Style Description:**
-${OPTIMIZED_QUERY}
-*This detailed description is the output from the previous Query Optimization Agent.*
+### 1. Optimized Style Description (Design Mandate)
+${style_description}
+*This is the core design aesthetic and functional requirement that is the output from the previous Query Optimization Agent.*
+
+### 2. Original User Query
+${user_query}
+*This is the user's original idea.*
 
 ---
 
@@ -19,7 +23,7 @@ ${OPTIMIZED_QUERY}
 Using the **Optimized Style Description** and cross-referencing against the capabilities and types of items in the **Inventory List**, perform the following steps:
 
 1.  **Structural Decomposition:** Decompose the furniture piece into its primary structural sub-assemblies (e.g., leg frames, horizontal supports, shelving units).
-2.  **Assembly Sequencing:** Determine the most logical and structurally sound order for assembly. Ensure that supports are built before surfaces are attached, and that the base is stable before height is added.
+2.  **Assembly Sequencing:** Determine the most logical and structurallyz< sound order for assembly. Ensure that supports are built before surfaces are attached, and that the base is stable before height is added.
 3.  **Part Description (Conceptual):** For each step, conceptually describe the necessary parts. **Do not select specific product IDs or SKU numbers.** Instead, describe the **type**, **material**, **dimension/size requirement**, and **function** needed, ensuring consistency with the **Optimized Style Description**.
     * *Example:* Instead of "Pipe ID 1234," write "Four structural legs using 1.5-inch diameter galvanized steel piping."
     * *Example:* Instead of "Connector SKU X5," write "Eight 90-degree elbow fittings for connecting horizontal and vertical pipes."
