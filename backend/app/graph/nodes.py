@@ -1,9 +1,7 @@
 """Node logic for Agent A (Planner), B (Inventory Clerk), C (Prompt Engineer), and D (Flux Generator)."""
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 from langchain_openai import ChatOpenAI
-from langchain_anthropic import ChatAnthropic
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.messages import HumanMessage, AIMessage
 from pydantic import BaseModel, Field
 from app.core.config import settings
 from app.graph.state import AgentState
@@ -13,13 +11,13 @@ from app.services.tools import get_inventory_retriever_tool
 # Initialize LLM based on configuration
 def get_llm():
     """Get the configured LLM instance."""
-        if not settings.openai_api_key:
-            raise ValueError("OpenAI API key not set. Set OPENAI_API_KEY in .env")
-        return ChatOpenAI(
-            model=settings.llm_model,
-            api_key=settings.openai_api_key,
-            temperature=0.7,
-        )
+    if not settings.openai_api_key:
+        raise ValueError("OpenAI API key not set. Set OPENAI_API_KEY in .env")
+    return ChatOpenAI(
+        model=settings.llm_model,
+        api_key=settings.openai_api_key,
+        temperature=0.7,
+    )
 
 
 def node_planner(state: AgentState) -> Dict[str, Any]:
@@ -27,13 +25,41 @@ def node_planner(state: AgentState) -> Dict[str, Any]:
     Agent A: Planner Node
     
     Receives user_query and generates a detailed construction plan.
-    The plan should reference materials and parts that can be found in the hardware inventory.
+    If clerk_feedback exists, adapts the plan to use alternative materials.
     Updates construction_plan in state.
     """
     llm = get_llm()
     
-    prompt = ChatPromptTemplate.from_messages([
-        ("system", """You are an expert construction planner. Your task is to create a detailed, 
+    # Check if there's feedback from the clerk
+    clerk_feedback = state.get("clerk_feedback")
+    
+    if clerk_feedback:
+        # Previous attempt failed - need to revise with alternative materials
+        system_prompt = """You are an expert construction planner. Your previous construction plan failed 
+        because the required materials were not available in the inventory.
+        
+        The Inventory Clerk reported: {clerk_feedback}
+        
+        Your task is to REWRITE the construction plan using ALTERNATIVE materials that are commonly 
+        available in a standard hardware store. Focus on:
+        - Standard materials like wood, metal, concrete, plastic, fabric, lighting
+        - Common hardware items like pipes, planks, blocks, cables, bolts
+        - Avoid exotic or specialized materials
+        
+        Be specific about:
+        - What alternative materials and parts will be used
+        - How they will be assembled
+        - The final structure's appearance and function
+        
+        Make the plan practical and achievable with standard hardware store inventory."""
+        
+        human_prompt = """User's original idea: {user_query}
+
+Previous attempt failed. Please rewrite the construction plan using ALTERNATIVE materials 
+that are available in a standard hardware store. Avoid the materials that were missing."""
+    else:
+        # Standard planning behavior
+        system_prompt = """You are an expert construction planner. Your task is to create a detailed, 
         step-by-step construction plan based on a user's vague idea.
         
         Be specific about:
@@ -43,17 +69,29 @@ def node_planner(state: AgentState) -> Dict[str, Any]:
         
         Make the plan practical and achievable. Describe materials and parts in detail so they can be 
         found in a hardware inventory catalog. Use descriptive terms like "steel pipe", "wood plank", 
-        "LED lighting", etc."""),
-        ("human", """User's idea: {user_query}
+        "LED lighting", etc. Focus on standard hardware store materials."""
+        
+        human_prompt = """User's idea: {user_query}
 
 Generate a detailed construction plan that realizes the user's idea.
-The plan should be specific, actionable, and clearly describe the materials and parts needed."""),
+The plan should be specific, actionable, and clearly describe the materials and parts needed."""
+    
+    prompt = ChatPromptTemplate.from_messages([
+        ("system", system_prompt),
+        ("human", human_prompt),
     ])
     
     chain = prompt | llm
-    response = chain.invoke({
-        "user_query": state["user_query"],
-    })
+    
+    if clerk_feedback:
+        response = chain.invoke({
+            "user_query": state["user_query"],
+            "clerk_feedback": clerk_feedback,
+        })
+    else:
+        response = chain.invoke({
+            "user_query": state["user_query"],
+        })
     
     construction_plan = response.content
     
@@ -62,11 +100,20 @@ The plan should be specific, actionable, and clearly describe the materials and 
     }
 
 
-class ItemSelection(BaseModel):
+class ClerkOutput(BaseModel):
     """Pydantic model for structured output from Inventory Clerk."""
-    selected_item_ids: List[str] = Field(
-        description="List of item IDs from the inventory that are needed for the construction plan. "
-        "Only include IDs that were returned by the search_hardware_catalog tool."
+    selected_ids: List[str] = Field(
+        default_factory=list,
+        description="List of item IDs from the inventory that match the construction plan requirements."
+    )
+    missing_parts_description: Optional[str] = Field(
+        default=None,
+        description="Description of missing parts if no suitable matches were found. "
+        "Example: 'No titanium pipes found' or 'No specialized LED strips available'."
+    )
+    is_successful: bool = Field(
+        description="Whether suitable inventory items were found for the construction plan. "
+        "Set to True if matches are good, False if matches are poor or missing."
     )
 
 
@@ -75,9 +122,8 @@ def node_inventory_clerk(state: AgentState) -> Dict[str, Any]:
     Agent B: Inventory Clerk Node
     
     Receives construction_plan and uses the search_hardware_catalog tool to find matching items.
-    Iterates through parts mentioned in the plan and searches for matching inventory items.
-    Uses structured output to return a list of item IDs.
-    Updates selected_item_ids in state.
+    Validates if matches are suitable and returns ClerkOutput with success status and feedback.
+    Updates selected_item_ids, is_clerk_successful, and clerk_feedback in state.
     """
     llm = get_llm()
     
@@ -85,7 +131,6 @@ def node_inventory_clerk(state: AgentState) -> Dict[str, Any]:
     search_tool = get_inventory_retriever_tool()
     
     # Extract key terms from the construction plan for searching
-    # We'll search for materials and parts mentioned in the plan
     construction_plan = state["construction_plan"] or ""
     
     # Use the LLM to extract search terms from the plan
@@ -100,39 +145,33 @@ def node_inventory_clerk(state: AgentState) -> Dict[str, Any]:
     extraction_response = extraction_chain.invoke({"construction_plan": construction_plan})
     search_terms_text = extraction_response.content
     
-    # Parse search terms (simple split, could be improved)
+    # Parse search terms
     search_terms = [term.strip() for term in search_terms_text.split(",") if term.strip()]
     
     # Search for items using the tool
     selected_ids = set()
     all_found_items = []
     
-    for search_term in search_terms[:10]:  # Limit to 10 searches to avoid too many API calls
+    for search_term in search_terms[:10]:  # Limit to 10 searches
         try:
             # Use the tool to search
             search_results = search_tool.invoke({"query": search_term})
             
             # Extract IDs from results
-            # The retriever tool returns Document objects from LangChain
             if isinstance(search_results, list):
                 for doc in search_results:
                     item_data = None
                     
                     # Handle Document objects from LangChain
                     if hasattr(doc, "metadata") and doc.metadata:
-                        # The metadata should contain the full MongoDB document
-                        # MongoDBAtlasVectorSearch stores the full document in metadata
                         item_data = doc.metadata
-                        # Also check if there's a nested document structure
                         if not item_data.get("id") and not item_data.get("_id"):
-                            # Try to get from the document itself
                             if hasattr(doc, "dict") or isinstance(doc.metadata, dict):
                                 item_data = doc.metadata
                     elif isinstance(doc, dict):
                         item_data = doc
                     
                     if item_data:
-                        # Extract ID (could be 'id' or '_id')
                         item_id = item_data.get("id") or (str(item_data.get("_id")) if item_data.get("_id") else None)
                         if item_id:
                             selected_ids.add(item_id)
@@ -144,45 +183,64 @@ def node_inventory_clerk(state: AgentState) -> Dict[str, Any]:
                             })
         except Exception as e:
             # Continue if a search fails
-            print(f"Warning: Search failed for '{search_term}': {str(e)}")
             continue
     
-    # Format found items for the LLM to make final selection
+    # Format found items for validation
     found_items_text = "\n".join([
-        f"- ID: {item.get('id')}, Name: {item.get('name', 'Unknown')}"
+        f"- ID: {item.get('id')}, Name: {item.get('name', 'Unknown')}, Description: {item.get('description', '')}"
         for item in all_found_items
-    ])
+    ]) if all_found_items else "No items found."
     
-    # Use structured output to get final list of IDs
-    structured_llm = llm.with_structured_output(ItemSelection)
-    selection_prompt = ChatPromptTemplate.from_messages([
-        ("system", """You are an inventory clerk. Analyze the construction plan and the found inventory items.
-        Return ONLY the item IDs that are actually needed for the construction plan.
-        Be precise - only include items that match materials or parts mentioned in the plan."""),
+    # Use structured output with ClerkOutput to validate matches
+    structured_llm = llm.with_structured_output(ClerkOutput)
+    validation_prompt = ChatPromptTemplate.from_messages([
+        ("system", """You are an inventory clerk. Your task is to:
+        1. Analyze the construction plan and the found inventory items
+        2. Determine if the found items are suitable matches for the materials/parts needed
+        3. If matches are good: Set is_successful=True and return the item IDs
+        4. If matches are poor or missing: Set is_successful=False and describe what's missing
+        
+        Be strict in your evaluation. Only set is_successful=True if you found suitable items 
+        that actually match the requirements in the construction plan."""),
         ("human", """Construction Plan:
 {construction_plan}
 
 Found Inventory Items:
 {found_items}
 
-Return the item IDs needed for this project. Only include IDs from the found items list above."""),
+Evaluate if these items are suitable for the construction plan. 
+If they are good matches, return the item IDs and set is_successful=True.
+If they are poor matches or key parts are missing, set is_successful=False and describe what's missing."""),
     ])
     
-    selection_chain = selection_prompt | structured_llm
-    result = selection_chain.invoke({
+    validation_chain = validation_prompt | structured_llm
+    result = validation_chain.invoke({
         "construction_plan": construction_plan,
-        "found_items": found_items_text or "No items found.",
+        "found_items": found_items_text,
     })
     
     # Validate IDs are from our found items
     valid_ids = [
-        item_id for item_id in result.selected_item_ids
+        item_id for item_id in result.selected_ids
         if item_id in selected_ids
     ]
     
-    return {
+    # Prepare return state
+    return_state = {
         "selected_item_ids": valid_ids,
+        "is_clerk_successful": result.is_successful,
     }
+    
+    if not result.is_successful:
+        # Provide feedback for the planner
+        return_state["clerk_feedback"] = result.missing_parts_description or (
+            "No suitable inventory items found for the required materials in the construction plan."
+        )
+    else:
+        # Clear any previous feedback on success
+        return_state["clerk_feedback"] = None
+    
+    return return_state
 
 
 def node_prompt_engineer(state: AgentState) -> Dict[str, Any]:
@@ -247,7 +305,7 @@ def node_flux_generator(state: AgentState) -> Dict[str, Any]:
     Agent D: Flux Generator Node
     
     Calls the mocked flux_service to generate an image.
-    Updates final_image_url in state.
+    Updates final_image_url and sets status to success in state.
     """
     from app.services.flux_service import generate_image
     
@@ -255,5 +313,6 @@ def node_flux_generator(state: AgentState) -> Dict[str, Any]:
     
     return {
         "final_image_url": image_url,
+        "status": "success",
     }
 

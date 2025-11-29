@@ -26,11 +26,29 @@ async def build(request: BuildRequest) -> BuildResponse:
             "selected_item_ids": [],
             "flux_prompt": None,
             "final_image_url": None,
+            "retry_count": 0,
+            "clerk_feedback": None,
+            "status": "processing",
+            "is_clerk_successful": False,
         }
         
         # Get workflow and execute
         workflow = get_workflow()
         final_state = workflow.invoke(initial_state)
+        
+        # Check if the workflow failed due to missing parts
+        status = final_state.get("status", "processing")
+        if status == "failed_no_parts" or (not final_state.get("is_clerk_successful", False) and final_state.get("retry_count", 0) >= 3):
+            return BuildResponse(
+                success=False,
+                user_query=final_state["user_query"],
+                construction_plan=final_state.get("construction_plan"),
+                selected_item_ids=[],
+                selected_items=[],
+                flux_prompt=None,
+                final_image_url=None,
+                error="We couldn't find the specific parts for your request. Please try a different design or use more common materials.",
+            )
         
         # Get full details of selected items
         selected_items = [
