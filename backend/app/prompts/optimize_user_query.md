@@ -32,7 +32,7 @@ Using the information above, perform the following steps to generate a detailed 
 Return the optimized description using the exact structure below:
 
 **Optimized Style Description:**
-${OPTIMIZED_QUERY}
+${OPTIMIZED_QUERY}$
 
 The optimized description **must** include, when relevant to the input:
 * **Object Summary:** The specific type and function of the furniture (e.g., Industrial-style corner desk, Two-tier modular pipe shelving unit).
