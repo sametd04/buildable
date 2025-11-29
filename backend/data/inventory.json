@@ -1,72 +1,44 @@
 [
   {
-    "id": "pipe-001",
-    "name": "Industrial Steel Pipe",
-    "category": "Metal",
-    "image_url": "https://via.placeholder.com/300x300?text=Steel+Pipe",
-    "description": "Heavy-duty steel pipe, 2-inch diameter, 6 feet long. Perfect for structural support and industrial aesthetics."
+    "id": "OAK-TT-001",
+    "name": "Table Top with Live Edge",
+    "category": "Wood/Furniture",
+    "src":"https://media.cdn.bauhaus/m/566825-1/prod_large_square.webp?width=1920&quality=75",
+    "description": "Heavy-duty Oak table top (Prod. Nr. 27314746) with continuous lamellae and an oiled finish. Dimensions: 200 cm L x 80 cm W x 4 cm T. Net weight: 44.8 kg. Price: 325.00 € (incl. VAT). Aesthetic keywords: rustic, natural, heavy."
   },
   {
-    "id": "wood-001",
-    "name": "Oak Wood Plank",
-    "category": "Wood",
-    "image_url": "https://via.placeholder.com/300x300?text=Wood+Plank",
-    "description": "Premium oak wood plank, 2x4 inches, 8 feet long. Natural finish, ideal for furniture and decorative elements."
+    "id": "WALNUT-TT-002",
+    "name": "Pur Iternal Black Edition Table Top",
+    "category": "Wood/Furniture",
+    "scr": "https://media.cdn.bauhaus/m/284260/prod_large_square.webp?width=1920&quality=75",
+    "description": "Solid American Walnut table top (Prod. Nr. 27255915) with finger-jointed lamellae and a UV-oil finish. Dimensions: 200 cm L x 80 cm W x 2.7 cm T. Net weight: 28.9 kg. Price: 235.00 € (incl. VAT)."
+  },  
+  {
+    "id": "STEEL-LEG-PUR-X-001",
+    "name": "Pur Iternal Black Edition Table Leg",
+    "category": "Metal/Structural",
+    "src": "https://media.cdn.bauhaus/m/568557/prod_large_square.webp?width=1920&quality=75",
+        "description": "X-shaped table leg set (Prod. Nr. 27197761) made of black powder-coated steel. Dimensions: 700 mm W x 723 mm H. Net weight: 16.0 kg (set of 2). Suitable for table tops 80–90 cm wide. Price: 265.00 € per unit (incl. VAT)."
   },
   {
-    "id": "block-001",
-    "name": "Concrete Cinder Block",
-    "category": "Concrete",
-    "image_url": "https://via.placeholder.com/300x300?text=Cinder+Block",
-    "description": "Standard concrete cinder block, 8x8x16 inches. Durable and versatile for construction projects."
+    "id": "SS-SCREW-2.9X13",
+    "name": "Marinetech Sheet Metal Screw",
+    "category": "Fastener/Stainless Steel",
+    "screw": "https://media.cdn.bauhaus/m/512219/prod_large_square.webp?width=1920&quality=75",
+    "description": "Corrosion-resistant A4 Stainless Steel screw (Prod. Nr. 23655285) with a Countersunk head and Pozidriv drive. Dimensions: 2.9 mm diameter x 13.0 mm length. Suitable for fastening thin sheet metal. Price: 0.21 € per piece (incl. VAT)."
   },
   {
-    "id": "light-001",
-    "name": "LED Rope Light",
-    "category": "Lighting",
-    "image_url": "https://via.placeholder.com/300x300?text=Rope+Light",
-    "description": "Waterproof LED rope light, 16 feet long, RGB color-changing. Perfect for ambient lighting and cyberpunk aesthetics."
+    "id": "STEEL-LEG-PUR-V-002",
+    "name": "Pur Iternal Black Edition Table Leg",
+    "category": "Metal/Structural",
+    "src": "https://media.cdn.bauhaus/m/568561/prod_large_square.webp?width=1920&quality=75",
+    "description": "X-shaped table leg set (Prod. Nr. 27197761) made of black powder-coated steel. Dimensions: 700 mm W x 723 mm H. Net weight: 16.0 kg (set of 2). Suitable for table tops 80–90 cm wide. Price: 265.00 € per unit (incl. VAT)."
   },
   {
-    "id": "bolt-001",
-    "name": "Heavy-Duty Bolt Set",
-    "category": "Hardware",
-    "image_url": "https://via.placeholder.com/300x300?text=Bolt+Set",
-    "description": "Stainless steel bolt and nut set, various sizes. Includes washers and mounting hardware."
-  },
-  {
-    "id": "sheet-001",
-    "name": "Metal Sheet Panel",
-    "category": "Metal",
-    "image_url": "https://via.placeholder.com/300x300?text=Metal+Sheet",
-    "description": "Aluminum sheet panel, 4x8 feet, brushed finish. Great for surfaces and decorative panels."
-  },
-  {
-    "id": "cable-001",
-    "name": "Industrial Cable",
-    "category": "Electrical",
-    "image_url": "https://via.placeholder.com/300x300?text=Industrial+Cable",
-    "description": "Thick braided steel cable, 20 feet long. High tensile strength for structural and decorative use."
-  },
-  {
-    "id": "glass-001",
-    "name": "Tempered Glass Panel",
-    "category": "Glass",
-    "image_url": "https://via.placeholder.com/300x300?text=Glass+Panel",
-    "description": "Safety tempered glass panel, 2x3 feet, clear. Modern and sleek for contemporary designs."
-  },
-  {
-    "id": "fabric-001",
-    "name": "Industrial Canvas Fabric",
-    "category": "Textile",
-    "image_url": "https://via.placeholder.com/300x300?text=Canvas+Fabric",
-    "description": "Heavy-duty canvas fabric, 10x10 feet, dark gray. Durable and weather-resistant."
-  },
-  {
-    "id": "wheel-001",
-    "name": "Industrial Caster Wheel",
-    "category": "Hardware",
-    "image_url": "https://via.placeholder.com/300x300?text=Caster+Wheel",
-    "description": "Heavy-duty caster wheel set, 4-inch diameter, swivel with brake. Perfect for mobile furniture."
+    "id": "STEEL-LEG-PUR-U-003",
+    "name": "Pur Iternal Black Edition Table Leg",
+    "category": "Metal/Structural",
+    "src":"https://media.cdn.bauhaus/m/568559/prod_large_square.webp?width=1920&quality=75",
+    "description": "U-shaped table leg set (Prod. Nr. 27197770) made of black powder-coated steel. Dimensions: 800 mm W x 723 mm H. Net weight: 19.2 kg (set of 2). Designed for table tops 80–90 cm wide. Price: 265.00 € per unit (incl. VAT)."
   }
 ]
