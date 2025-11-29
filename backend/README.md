@@ -18,13 +18,26 @@ The backend uses LangGraph to orchestrate a multi-agent workflow:
    pip install -r requirements.txt
    ```
 
-2. **Configure environment:**
+2. **Start MongoDB:**
    ```bash
-   cp .env.example .env
-   # Edit .env and add your API keys
+   # Make sure MongoDB is running locally or update MONGO_URI in .env
+   # For local MongoDB: mongod
+   # Or use MongoDB Atlas and update MONGO_URI with your connection string
    ```
 
-3. **Run the server:**
+3. **Configure environment:**
+   ```bash
+   cp env.example .env
+   # Edit .env and add your API keys and MongoDB connection string
+   ```
+
+4. **Seed the database:**
+   ```bash
+   python scripts/seed_db.py
+   ```
+   This will load `data/inventory.json` into MongoDB. You can run this anytime to reset the database.
+
+5. **Run the server:**
    ```bash
    uvicorn app.main:app --reload
    ```
@@ -67,7 +80,7 @@ backend/
 │   │   └── schemas.py     # Pydantic models
 │   ├── core/
 │   │   ├── config.py      # Configuration
-│   │   └── database.py    # Inventory loader
+│   │   └── database.py    # MongoDB connection and inventory operations
 │   ├── graph/
 │   │   ├── state.py       # AgentState definition
 │   │   ├── nodes.py       # Agent logic
@@ -76,9 +89,11 @@ backend/
 │   │   └── flux_service.py # FLUX API mock
 │   └── main.py            # FastAPI app
 ├── data/
-│   └── inventory.json     # Inventory database
+│   └── inventory.json     # Inventory seed data
+├── scripts/
+│   └── seed_db.py         # Database seeding script
 ├── requirements.txt
-└── .env.example
+└── env.example
 ```
 
 ## Development

@@ -21,7 +21,11 @@ class Settings(BaseSettings):
     flux_api_key: Optional[str] = None
     flux_api_url: str = "https://api.flux.dev/v1"
     
-    # Data Configuration
+    # MongoDB Configuration
+    mongo_uri: str = "mongodb://localhost:27017"
+    mongo_db_name: str = "buildable_db"
+    
+    # Data Configuration (for seeding)
     inventory_path: str = "data/inventory.json"
     
     class Config:
