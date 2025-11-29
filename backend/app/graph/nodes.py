@@ -35,6 +35,12 @@ def node_style_optimizer(state: AgentState) -> Dict[str, Any]:
     """
     llm = get_llm()
     
+    # Get user query
+    user_query = state.get("user_query")
+    
+    prompt_variables = {
+        "user_query": user_query,
+    }
 
     prompt = ChatPromptTemplate.from_messages([
         ("system", """
@@ -91,6 +97,19 @@ def node_planner(state: AgentState) -> Dict[str, Any]:
     
     # Check if there's feedback from the clerk
     clerk_feedback = state.get("clerk_feedback")
+
+    # Get the previous construction plan
+    construction_plan = state.get("construction_plan")
+
+    # Get user query
+    user_query = state.get("user_query")
+
+    prompt_variables = {
+        "style_description": style_description,
+        "user_query": user_query,
+        "previous_plan": construction_plan,
+        "clerk_feedback": clerk_feedback,
+    }
     
     if clerk_feedback:
         # Previous attempt failed - need to revise with alternative materials
