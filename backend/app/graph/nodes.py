@@ -398,7 +398,7 @@ def node_flux_generator(state: AgentState) -> Dict[str, Any]:
     """
     from app.services.flux_service import generate_image
     
-    image_url = generate_image(state["flux_prompt"])
+    image_url = generate_image(state["flux_prompt"], "https://www.thecontractchair.co.uk/media/re_branding/ck_uploads/from_tiny_editor/ash-wood-table-top%20(3).webp", )
     
     return {
         "final_image_url": image_url,
