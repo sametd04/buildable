@@ -6,7 +6,7 @@ from langfuse import observe
 from pydantic import BaseModel, Field
 from app.core.config import settings
 from app.graph.state import AgentState
-from app.services.tools import get_inventory_retriever_tool
+from app.services.tools import get_inventory_retriever_tool, get_inventory_retriever
 
 
 # Initialize LLM based on configuration
@@ -184,14 +184,8 @@ class ClerkOutput(BaseModel):
     )
     missing_parts_description: Optional[str] = Field(
         default=None,
-        description="Description of missing parts if no suitable matches were found. "
-        "Example: 'No titanium pipes found' or 'No specialized LED strips available'. "
-        "Also include the items you found in the found_items field."
-    )
-    found_items: List[str] = Field(
-        default_factory=list,
-        description="List of items that were found in the inventory."
-        "Example: ['steel pipe', 'wood plank', 'LED light']"
+        description="Description of missing parts if no suitable matches were found."
+        "Example: 'No titanium pipes found' or 'No specialized LED strips available'."
     )
     is_successful: bool = Field(
         description="Whether suitable inventory items were found for the construction plan. "
@@ -210,8 +204,8 @@ def node_inventory_clerk(state: AgentState) -> Dict[str, Any]:
     """
     llm = get_llm()
     
-    # Get the search tool/retriever
-    search_tool = get_inventory_retriever_tool()
+    # Get the retriever directly (not the tool) to access full Document objects with metadata
+    retriever = get_inventory_retriever()
     
     # Extract key terms from the construction plan for searching
     construction_plan = state["construction_plan"] or ""
@@ -231,46 +225,30 @@ def node_inventory_clerk(state: AgentState) -> Dict[str, Any]:
     # Parse search terms
     search_terms = [term.strip() for term in search_terms_text.split(",") if term.strip()]
     
-    # Search for items using the tool
+    # Search for items using the retriever directly to get Document objects with metadata
     selected_ids = set()
     all_found_items = []
     
-    # TODO: CHANGE THIS!
+    # Import helper function for converting ObjectId to id
+    from app.core.database import _convert_objectid_to_id
+    
     for search_term in search_terms:  # Limit to 10 searches
-        try:
-            # Use the tool to search - tool expects a string, not a dict
-            search_results = search_tool.invoke(search_term)
-            
-            # Extract IDs from results
-            if isinstance(search_results, list):
-                for doc in search_results:
-                    item_data = None
-                    
-                    # Handle Document objects from LangChain
-                    if hasattr(doc, "metadata") and doc.metadata:
-                        item_data = doc.metadata
-                        if not item_data.get("id") and not item_data.get("_id"):
-                            if hasattr(doc, "dict") or isinstance(doc.metadata, dict):
-                                item_data = doc.metadata
-                    elif isinstance(doc, dict):
-                        item_data = doc
-                    
-                    if item_data:
-                        item_id = str(item_data.get("_id"))
-                        if item_id:
-                            selected_ids.add(item_id)
-                            all_found_items.append({
-                                "id": item_id,
-                                "name": item_data.get("name", ""),
-                                "description": item_data.get("description", ""),
-                                "category": item_data.get("category", ""),
-                            })
-        except Exception as e:
-            # Log error but continue with other search terms
-            # This helps debug tool invocation issues
-            import logging
-            logging.warning(f"Search failed for term '{search_term}': {e}")
-            continue
+        # Use the retriever directly - returns Document objects with .metadata containing full MongoDB doc
+        documents = retriever.invoke(search_term)
+        
+        # Extract full MongoDB documents from Document metadata
+        for doc in documents:
+            # Document objects have .metadata containing the full MongoDB document
+            if hasattr(doc, 'metadata') and doc.metadata:
+                item_doc = dict(doc.metadata)  # Make a copy
+                # Convert _id to id if needed
+                item_doc = _convert_objectid_to_id(item_doc)
+                item_id = doc.id
+                item_doc["id"] = str(item_id)
+                
+                if item_id and str(item_id) not in selected_ids:
+                    selected_ids.add(str(item_id))
+                    all_found_items.append(item_doc)
     
     # Format found items for validation
     found_items_text = "\n".join([
@@ -281,51 +259,44 @@ def node_inventory_clerk(state: AgentState) -> Dict[str, Any]:
     # Use structured output with ClerkOutput to validate matches
     structured_llm = llm.with_structured_output(ClerkOutput)
     validation_prompt = ChatPromptTemplate.from_messages([
-        ("system", """You are an inventory clerk. Your task is to:
-        1. Analyze the construction plan and the found inventory items
-        2. Determine if the found items are suitable matches for the materials/parts needed
-        3. If matches are good: Set is_successful=True and return the item IDs
-        4. If matches are poor or missing: Set is_successful=False and describe what's missing, give the items you found and tell the planner to update the plan.
-        5. Ignore requıred tools, finishes and ONLY FOCUS ON RAW MATERIALS.
-        Only set is_successful=True if you found suitable items 
-        that actually match the requirements in the construction plan."""),
+        ("system", """Act as an inventory checker. Compare the construction plan against the found inventory items. We only care about raw materials right now (ignore tools and finishes).
+
+If you find what we need, mark is_successful=True and output the IDs. If the inventory falls short, set is_successful=False, list what you found, and tell the planner exactly what's missing. Use your best judgment to ensure the materials are actually suitable."""),
         ("human", """Construction Plan:
 {construction_plan}
 
 Found Inventory Items:
 {found_items}
 
-Evaluate if these items are suitable for the construction plan. 
-If they are good matches, return the item IDs and set is_successful=True.
-If they are poor matches or key parts are missing, set is_successful=False and describe what's missing."""),
+Evaluate if these items are suitable for the construction plan. """),
     ])
     
-    # validation_chain = validation_prompt | structured_llm
-    # result = validation_chain.invoke({
-    #    "construction_plan": construction_plan,
-    #    "found_items": found_items_text,
-    #})
+    validation_chain = validation_prompt | structured_llm
+    result = validation_chain.invoke({
+        "construction_plan": construction_plan,
+        "found_items": found_items_text,
+    })
     
     # Validate IDs are from our found items
-    #valid_ids = [
-    #    item_id for item_id in result.selected_ids
-    #    if item_id in selected_ids
-    #]
+    valid_ids = [
+        item_id for item_id in result.selected_ids
+        if item_id in selected_ids
+    ]
     
     # Prepare return state
     return_state = {
-        "selected_item_ids": selected_ids,
-        "is_clerk_successful": True,
+        "selected_item_ids": valid_ids,
+        "is_clerk_successful": result.is_successful,
     }
     
-    #if not result.is_successful:
+    if not result.is_successful:
         # Provide feedback for the planner
-        #return_state["clerk_feedback"] = result.missing_parts_description or (
-        #    "No suitable inventory items found for the required materials in the construction plan. Here are the items I found: " + found_items_text
-        #)
-    #else:
+        return_state["clerk_feedback"] = result.missing_parts_description or (
+            "No suitable inventory items found for the required materials in the construction plan. Here are the items I found: " + found_items_text
+        )
+    else:
         # Clear any previous feedback on success
-        #return_state["clerk_feedback"] = None
+        return_state["clerk_feedback"] = None
     
     return return_state
 
