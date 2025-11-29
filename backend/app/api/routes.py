@@ -22,6 +22,7 @@ async def build(request: BuildRequest) -> BuildResponse:
         # Initialize state (no need to load inventory into memory)
         initial_state: AgentState = {
             "user_query": request.user_query,
+            "style_description": "",  # Will be set by style_optimizer node
             "construction_plan": None,
             "selected_item_ids": [],
             "flux_prompt": None,

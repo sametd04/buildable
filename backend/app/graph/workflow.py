@@ -3,6 +3,7 @@ from typing import Literal
 from langgraph.graph import StateGraph, END
 from app.graph.state import AgentState
 from app.graph.nodes import (
+    node_style_optimizer,
     node_planner,
     node_inventory_clerk,
     node_prompt_engineer,
@@ -72,10 +73,12 @@ def create_workflow() -> StateGraph:
     Create and compile the LangGraph workflow with feedback loop.
     
     The workflow includes a feedback loop:
-    START -> Planner -> Inventory Clerk -> (conditional) -> Prompt Engineer -> Flux Generator -> END
-                                                              |
-                                                              v (if failed)
-                                                          Planner (retry)
+    START -> Style Optimizer -> Planner -> Inventory Clerk -> (conditional) -> Prompt Engineer -> Flux Generator -> END
+                                                                                |
+                                                                                v (if failed)
+                                                                            Planner (retry)
+    
+    Note: The retry loop goes back to Planner (not Style Optimizer) to maintain the style while revising materials.
     
     Returns:
         Compiled StateGraph ready for execution.
@@ -84,6 +87,7 @@ def create_workflow() -> StateGraph:
     workflow = StateGraph(AgentState)
     
     # Add nodes
+    workflow.add_node("style_optimizer", node_style_optimizer)
     workflow.add_node("planner", node_planner)
     workflow.add_node("inventory_clerk", node_inventory_clerk)
     workflow.add_node("prompt_engineer", node_prompt_engineer)
@@ -94,7 +98,8 @@ def create_workflow() -> StateGraph:
     workflow.add_node("set_failure_status", set_failure_status)
     
     # Define the flow
-    workflow.set_entry_point("planner")
+    workflow.set_entry_point("style_optimizer")
+    workflow.add_edge("style_optimizer", "planner")
     workflow.add_edge("planner", "inventory_clerk")
     
     # Conditional edge from inventory_clerk
