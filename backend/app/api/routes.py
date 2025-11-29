@@ -15,17 +15,13 @@ async def build(request: BuildRequest) -> BuildResponse:
     """
     POST /build endpoint.
     
-    Fetches inventory from MongoDB, initializes the Graph with user_query and inventory,
+    Initializes the Graph with user_query (inventory is accessed via vector search),
     and returns the final state (Plan, Selected Items, and Image URL).
     """
     try:
-        # Fetch inventory from MongoDB
-        inventory_data = get_inventory()
-        
-        # Initialize state
+        # Initialize state (no need to load inventory into memory)
         initial_state: AgentState = {
             "user_query": request.user_query,
-            "inventory_data": inventory_data,
             "construction_plan": None,
             "selected_item_ids": [],
             "flux_prompt": None,
