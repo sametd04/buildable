@@ -1,7 +1,7 @@
 """API routes for triggering graph execution."""
 from fastapi import APIRouter, HTTPException
 from app.api.schemas import BuildRequest, BuildResponse
-from app.core.database import load_inventory, get_inventory_item_by_id
+from app.core.database import get_inventory, get_inventory_item_by_id
 from app.graph.workflow import get_workflow
 from app.graph.state import AgentState
 import traceback
@@ -15,12 +15,12 @@ async def build(request: BuildRequest) -> BuildResponse:
     """
     POST /build endpoint.
     
-    Loads inventory.json, initializes the Graph with user_query and inventory,
+    Fetches inventory from MongoDB, initializes the Graph with user_query and inventory,
     and returns the final state (Plan, Selected Items, and Image URL).
     """
     try:
-        # Load inventory
-        inventory_data = load_inventory()
+        # Fetch inventory from MongoDB
+        inventory_data = get_inventory()
         
         # Initialize state
         initial_state: AgentState = {
@@ -53,8 +53,8 @@ async def build(request: BuildRequest) -> BuildResponse:
             final_image_url=final_state.get("final_image_url"),
         )
         
-    except FileNotFoundError as e:
-        raise HTTPException(status_code=500, detail=f"Inventory file not found: {str(e)}")
+    except ConnectionError as e:
+        raise HTTPException(status_code=500, detail=f"MongoDB connection error: {str(e)}")
     except ValueError as e:
         raise HTTPException(status_code=500, detail=f"Configuration error: {str(e)}")
     except Exception as e:
