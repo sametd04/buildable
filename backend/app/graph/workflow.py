@@ -81,7 +81,7 @@ def create_workflow() -> StateGraph:
     Note: The retry loop goes back to Planner (not Style Optimizer) to maintain the style while revising materials.
     
     Returns:
-        Compiled StateGraph ready for execution.
+        Compiled StateGraph ready for execution with Langfuse tracing.
     """
     # Create the graph
     workflow = StateGraph(AgentState)

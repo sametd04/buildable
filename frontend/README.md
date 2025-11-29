@@ -1,30 +1,87 @@
-# Buildable frontend design
+# Buildable Frontend
 
-*Automatically synced with your [v0.app](https://v0.app) deployments*
-
-[![Deployed on Vercel](https://img.shields.io/badge/Deployed%20on-Vercel-black?style=for-the-badge&logo=vercel)](https://vercel.com/sametd04s-projects/v0-buildable-frontend-design)
-[![Built with v0](https://img.shields.io/badge/Built%20with-v0.app-black?style=for-the-badge)](https://v0.app/chat/fUi1ZSHOQFE)
+Next.js frontend for the Buildable hackathon project. Connects to the FastAPI backend to transform user ideas into construction plans and generated images.
 
 ## Overview
 
-This repository will stay in sync with your deployed chats on [v0.app](https://v0.app).
-Any changes you make to your deployed app will be automatically pushed to this repository from [v0.app](https://v0.app).
+The frontend provides a dashboard interface where users can:
+- Enter vague design ideas (e.g., "Cyberpunk Throne")
+- View the AI-generated construction plan
+- See selected materials from the inventory
+- View the generated photorealistic image
 
-## Deployment
+## Setup
 
-Your project is live at:
+1. **Install dependencies:**
+   ```bash
+   npm install
+   # or
+   pnpm install
+   ```
 
-**[https://vercel.com/sametd04s-projects/v0-buildable-frontend-design](https://vercel.com/sametd04s-projects/v0-buildable-frontend-design)**
+2. **Configure backend URL (optional):**
+   Create a `.env.local` file:
+   ```bash
+   NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
+   ```
+   Default is `http://localhost:8000/api/v1`
 
-## Build your app
+3. **Run the development server:**
+   ```bash
+   npm run dev
+   # or
+   pnpm dev
+   ```
 
-Continue building your app on:
+4. **Make sure the backend is running:**
+   The frontend expects the backend API to be available at `http://localhost:8000` (or your configured URL).
 
-**[https://v0.app/chat/fUi1ZSHOQFE](https://v0.app/chat/fUi1ZSHOQFE)**
+## Features
 
-## How It Works
+- **Agent Command Center**: Input field to submit design requests
+- **Assembly Workbench**: Displays generated images and construction plans
+- **Material Database (Warehouse)**: Shows selected inventory items
+- **Real-time Updates**: Shows agent processing steps and results
 
-1. Create and modify your project using [v0.app](https://v0.app)
-2. Deploy your chats from the v0 interface
-3. Changes are automatically pushed to this repository
-4. Vercel deploys the latest version from this repository
+## Project Structure
+
+```
+frontend/
+├── app/
+│   └── page.tsx              # Main dashboard page
+├── components/
+│   ├── agent-command-center.tsx  # Input and message display
+│   ├── assembly-workbench.tsx     # Image and plan display
+│   └── warehouse.tsx              # Material inventory display
+├── lib/
+│   └── api.ts                # Backend API client
+└── ...
+```
+
+## API Integration
+
+The frontend calls the backend `/api/v1/build` endpoint with:
+```json
+{
+  "user_query": "Cyberpunk Throne"
+}
+```
+
+And receives:
+```json
+{
+  "success": true,
+  "user_query": "Cyberpunk Throne",
+  "construction_plan": "...",
+  "selected_item_ids": ["pipe-001", "light-001"],
+  "selected_items": [...],
+  "flux_prompt": "...",
+  "final_image_url": "..."
+}
+```
+
+## Development
+
+- Frontend runs on `http://localhost:3000` (default Next.js port)
+- Backend should run on `http://localhost:8000`
+- CORS is enabled on the backend to allow frontend requests

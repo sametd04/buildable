@@ -2,6 +2,11 @@
 import json
 import sys
 from pathlib import Path
+
+# Add the backend directory to Python path so we can import app modules
+backend_dir = Path(__file__).parent.parent
+sys.path.insert(0, str(backend_dir))
+
 from pymongo import MongoClient
 from bson import ObjectId
 from langchain_openai import OpenAIEmbeddings
@@ -68,6 +73,9 @@ def seed_database():
         
         # Create text representation for embedding
         text_to_embed = f"{item.get('name', '')} - {item.get('description', '')} - {item.get('category', '')}"
+        
+        # Store the text field (required by MongoDBAtlasVectorSearch)
+        item_copy["text"] = text_to_embed
         
         # Generate embedding
         try:

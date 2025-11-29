@@ -28,7 +28,7 @@ export function ResizableDivider({ onResize }: ResizableDividerProps) {
   return (
     <div
       onMouseDown={handleMouseDown}
-      className="h-1 bg-slate-700 hover:bg-orange-500 cursor-row-resize transition-colors duration-200 group active:bg-orange-500"
+      className="h-1 bg-border hover:bg-primary cursor-row-resize transition-colors duration-200 group active:bg-primary"
       title="Drag to resize"
     />
   )

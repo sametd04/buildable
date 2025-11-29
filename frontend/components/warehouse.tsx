@@ -8,50 +8,60 @@ import { Package, Check } from "lucide-react"
 interface InventoryItem {
   id: string
   name: string
-  type: string
-  itemId: string
+  category?: string
+  description?: string
+  image_url?: string
 }
 
 const INVENTORY_DATA: InventoryItem[] = [
-  { id: "1", name: "Galvanized Pipe", type: "Metal", itemId: "#P-9921" },
-  { id: "2", name: "Cinder Block", type: "Concrete", itemId: "#M-4421" },
-  { id: "3", name: "Neon Tube", type: "Glass", itemId: "#E-1847" },
-  { id: "4", name: "Oak Slab", type: "Wood", itemId: "#W-5523" },
+  { id: "1", name: "Galvanized Pipe", category: "Metal" },
+  { id: "2", name: "Cinder Block", category: "Concrete" },
+  { id: "3", name: "Neon Tube", category: "Glass" },
+  { id: "4", name: "Oak Slab", category: "Wood" },
 ]
 
 export function Warehouse({
   selectedItems,
+  selectedItemsData,
   onSelectItem,
-}: { selectedItems: string[]; onSelectItem: (id: string) => void }) {
+}: {
+  selectedItems: string[]
+  selectedItemsData?: InventoryItem[]
+  onSelectItem: (id: string) => void
+}) {
   const [searchQuery, setSearchQuery] = useState("")
   const [isLoading, setIsLoading] = useState(false)
-  const [filteredItems, setFilteredItems] = useState(INVENTORY_DATA)
+
+  // Use selectedItemsData if available, otherwise fall back to INVENTORY_DATA
+  const displayItems = selectedItemsData && selectedItemsData.length > 0 ? selectedItemsData : INVENTORY_DATA
+
+  const [filteredItems, setFilteredItems] = useState(displayItems)
 
   useEffect(() => {
     setIsLoading(true)
     const timer = setTimeout(() => {
       setFilteredItems(
-        INVENTORY_DATA.filter(
+        displayItems.filter(
           (item) =>
             item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            item.type.toLowerCase().includes(searchQuery.toLowerCase()),
+            (item.category && item.category.toLowerCase().includes(searchQuery.toLowerCase())),
         ),
       )
       setIsLoading(false)
     }, 300)
     return () => clearTimeout(timer)
-  }, [searchQuery])
+  }, [searchQuery, displayItems])
 
   return (
     <div className="flex flex-col h-full p-4 gap-4">
       {/* Header */}
       <div className="flex flex-col gap-3 pb-2 border-b border-border">
-        <h2 className="text-sm font-bold uppercase tracking-widest terminal text-orange-500">Material Database</h2>
+        <h2 className="text-sm font-bold uppercase tracking-widest terminal text-foreground">Material Database</h2>
         <Input
           placeholder="Search Catalog..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="h-8 bg-slate-900 border-slate-800 text-xs"
+          className="h-8 bg-input border-border text-xs"
         />
       </div>
 
@@ -63,7 +73,7 @@ export function Warehouse({
               {[1, 2, 3, 4].map((i) => (
                 <div
                   key={i}
-                  className="w-40 h-24 bg-slate-900 rounded border border-slate-800 animate-pulse flex-shrink-0"
+                  className="w-40 h-24 bg-card rounded border border-border animate-pulse flex-shrink-0"
                 />
               ))}
             </>
@@ -74,28 +84,28 @@ export function Warehouse({
                 onClick={() => onSelectItem(item.id)}
                 className={`p-3 cursor-pointer transition-all border-2 flex-shrink-0 w-40 ${
                   selectedItems.includes(item.id)
-                    ? "border-orange-500 bg-slate-800/50"
-                    : "border-slate-800 bg-slate-900/40 hover:border-slate-700"
+                    ? "border-primary bg-muted"
+                    : "border-border bg-card hover:border-primary/50"
                 }`}
               >
                 <div className="flex flex-col gap-2 h-full">
                   {/* Thumbnail */}
-                  <div className="w-full h-12 bg-gradient-to-br from-slate-700 to-slate-900 rounded border border-slate-700 flex items-center justify-center">
-                    <Package className="w-5 h-5 text-orange-500/50" />
+                  <div className="w-full h-12 bg-muted rounded border border-border flex items-center justify-center">
+                    <Package className="w-5 h-5 text-muted-foreground" />
                   </div>
 
                   {/* Content */}
                   <div className="flex-1 min-w-0 flex flex-col justify-between">
                     <div>
                       <p className="text-xs font-semibold text-foreground truncate">{item.name}</p>
-                      <p className="text-xs text-muted-foreground truncate">{item.type}</p>
+                      <p className="text-xs text-muted-foreground truncate">{item.category || "Unknown"}</p>
                     </div>
                     <div className="flex items-center justify-between gap-1">
-                      <p className="text-xs terminal text-orange-400 truncate flex-1">{item.itemId}</p>
+                      <p className="text-xs terminal text-foreground truncate flex-1">{item.id}</p>
                       {/* Selection Badge */}
                       {selectedItems.includes(item.id) && (
-                        <div className="w-4 h-4 rounded-full bg-orange-500 flex items-center justify-center flex-shrink-0">
-                          <Check className="w-2.5 h-2.5 text-slate-950" />
+                        <div className="w-4 h-4 rounded-full bg-primary flex items-center justify-center flex-shrink-0">
+                          <Check className="w-2.5 h-2.5 text-primary-foreground" />
                         </div>
                       )}
                     </div>

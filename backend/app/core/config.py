@@ -19,8 +19,13 @@ class Settings(BaseSettings):
     
     # FLUX API Configuration (Black Forest Labs)
     bfl_api_key: Optional[str] = None
-    flux_model: str = "flux-pro-1.1"  # Options: flux-pro-1.1, flux-pro, flux-dev, flux-schnell
+    flux_model: str = "flux-2-pro"  # Options: flux-pro-1.1, flux-pro, flux-dev, flux-schnell
 
+    # Langfuse Configuration
+    langfuse_public_key: Optional[str] = None
+    langfuse_secret_key: Optional[str] = None
+    langfuse_base_url: str = "https://cloud.langfuse.com"  # Default to cloud, can be self-hosted
+    langfuse_project: Optional[str] = None  # Optional: defaults to default project
     
     # MongoDB Configuration
     mongo_uri: str = "mongodb://localhost:27017"

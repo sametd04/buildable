@@ -2,6 +2,7 @@
 from typing import Dict, Any, List, Optional
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
+from langfuse import observe
 from pydantic import BaseModel, Field
 from app.core.config import settings
 from app.graph.state import AgentState
@@ -13,13 +14,17 @@ def get_llm():
     """Get the configured LLM instance."""
     if not settings.openai_api_key:
         raise ValueError("OpenAI API key not set. Set OPENAI_API_KEY in .env")
-    return ChatOpenAI(
+    
+    llm = ChatOpenAI(
         model=settings.llm_model,
         api_key=settings.openai_api_key,
         temperature=0.7,
     )
+    
+    return llm
 
 
+@observe(name="style_optimizer")
 def node_style_optimizer(state: AgentState) -> Dict[str, Any]:
     """
     Node 0: Style Optimizer
@@ -61,6 +66,7 @@ Write a paragraph that captures the vibe and feeling of this design."""),
     }
 
 
+@observe(name="planner")
 def node_planner(state: AgentState) -> Dict[str, Any]:
     """
     Agent A: Planner Node
@@ -179,6 +185,7 @@ class ClerkOutput(BaseModel):
     )
 
 
+@observe(name="inventory_clerk")
 def node_inventory_clerk(state: AgentState) -> Dict[str, Any]:
     """
     Agent B: Inventory Clerk Node
@@ -305,6 +312,7 @@ If they are poor matches or key parts are missing, set is_successful=False and d
     return return_state
 
 
+@observe(name="prompt_engineer")
 def node_prompt_engineer(state: AgentState) -> Dict[str, Any]:
     """
     Agent C: Prompt Engineer Node
@@ -362,6 +370,7 @@ The image should showcase the final result in an impressive, professional manner
     }
 
 
+@observe(name="flux_generator")
 def node_flux_generator(state: AgentState) -> Dict[str, Any]:
     """
     Agent D: Flux Generator Node

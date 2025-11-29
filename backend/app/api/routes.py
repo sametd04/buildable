@@ -2,9 +2,11 @@
 from fastapi import APIRouter, HTTPException
 from app.api.schemas import BuildRequest, BuildResponse, FluxTestRequest, FluxTestResponse
 from app.core.database import get_inventory, get_inventory_item_by_id
+from app.core.config import settings
 from app.graph.workflow import get_workflow
 from app.graph.state import AgentState
 from app.services.flux_service import generate_image
+from langfuse import observe
 import traceback
 
 
@@ -12,6 +14,7 @@ router = APIRouter(prefix="/api/v1", tags=["build"])
 
 
 @router.post("/build", response_model=BuildResponse)
+@observe(name="build_endpoint")
 async def build(request: BuildRequest) -> BuildResponse:
     """
     POST /build endpoint.
@@ -34,9 +37,21 @@ async def build(request: BuildRequest) -> BuildResponse:
             "is_clerk_successful": False,
         }
         
-        # Get workflow and execute
+        # Get workflow and execute with Langfuse callback if configured
         workflow = get_workflow()
-        final_state = workflow.invoke(initial_state)
+        
+        # Add Langfuse callback handler for LangGraph tracing
+        config = {}
+        if settings.langfuse_public_key and settings.langfuse_secret_key:
+            from langfuse.langchain import CallbackHandler
+            langfuse_handler = CallbackHandler(
+                public_key=settings.langfuse_public_key,
+                secret_key=settings.langfuse_secret_key,
+                base_url=settings.langfuse_base_url,
+            )
+            config["callbacks"] = [langfuse_handler]
+        
+        final_state = workflow.invoke(initial_state, config=config if config else None)
         
         # Check if the workflow failed due to missing parts
         status = final_state.get("status", "processing")

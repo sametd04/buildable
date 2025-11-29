@@ -24,10 +24,12 @@ def get_inventory_retriever_tool():
     collection = db.inventory
     
     # Initialize MongoDB Atlas Vector Search
+    # text_key specifies which field contains the text for the retriever
     vector_search = MongoDBAtlasVectorSearch(
         collection=collection,
         embedding=embeddings,
         index_name="vector_index",  # This should match the index name in MongoDB Atlas
+        text_key="text",  # Field name containing the text (matches what we store during seeding)
     )
     
     # Create retriever with proper configuration

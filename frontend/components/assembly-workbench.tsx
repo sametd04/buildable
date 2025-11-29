@@ -7,14 +7,19 @@ import { RotateCcw, FileDown, Cpu } from "lucide-react"
 
 export function AssemblyWorkbench({
   generatedImage,
+  constructionPlan,
   onRegenerate,
-}: { generatedImage: string | null; onRegenerate: () => void }) {
+}: {
+  generatedImage: string | null
+  constructionPlan: string | null
+  onRegenerate: () => void
+}) {
   return (
     <div className="flex flex-col h-full">
       {/* Toolbar */}
-      <div className="border-b border-border bg-slate-950/70 p-4">
+      <div className="border-b border-border bg-card p-4">
         <Tabs defaultValue="hero" className="w-full">
-          <TabsList className="bg-slate-900 border border-slate-800">
+          <TabsList className="bg-muted border border-border">
             <TabsTrigger value="hero" className="text-xs">
               Hero Render
             </TabsTrigger>
@@ -33,7 +38,13 @@ export function AssemblyWorkbench({
             <div className="text-xs text-muted-foreground">Schematic view mode active</div>
           </TabsContent>
           <TabsContent value="guide" className="mt-4">
-            <div className="text-xs text-muted-foreground">Assembly guide mode active</div>
+            {constructionPlan ? (
+              <div className="text-xs text-muted-foreground whitespace-pre-wrap max-h-96 overflow-y-auto">
+                {constructionPlan}
+              </div>
+            ) : (
+              <div className="text-xs text-muted-foreground">No construction plan available yet</div>
+            )}
           </TabsContent>
         </Tabs>
       </div>
@@ -41,7 +52,7 @@ export function AssemblyWorkbench({
       {/* Main Canvas */}
       <div className="flex-1 flex items-center justify-center dot-grid relative overflow-hidden p-6">
         {generatedImage ? (
-          <Card className="bg-slate-900/80 border-slate-800 p-4 shadow-2xl max-w-lg max-h-full">
+          <Card className="bg-card border-border p-4 shadow-2xl max-w-lg max-h-full">
             <img
               src={generatedImage || "/placeholder.svg"}
               alt="Generated assembly"
@@ -50,8 +61,8 @@ export function AssemblyWorkbench({
           </Card>
         ) : (
           <div className="flex flex-col items-center gap-4 text-muted-foreground">
-            <div className="w-16 h-16 rounded border-2 border-dashed border-slate-700 flex items-center justify-center">
-              <Cpu className="w-8 h-8 text-orange-500/30" />
+            <div className="w-16 h-16 rounded border-2 border-dashed border-border flex items-center justify-center">
+              <Cpu className="w-8 h-8 text-muted-foreground" />
             </div>
             <p className="text-sm font-mono uppercase tracking-widest">AWAITING AGENT INPUT</p>
           </div>
@@ -59,18 +70,18 @@ export function AssemblyWorkbench({
       </div>
 
       {/* Bottom Controls - Removed "Edit Prompt" button */}
-      <div className="border-t border-border bg-slate-950/70 p-4 flex justify-center gap-3">
+      <div className="border-t border-border bg-card p-4 flex justify-center gap-3">
         <Button
           variant="outline"
           size="sm"
-          className="bg-slate-900 border-slate-700 hover:border-orange-500 h-8"
+          className="bg-muted border-border hover:border-primary h-8"
           onClick={onRegenerate}
           disabled={!generatedImage}
         >
           <RotateCcw className="w-3 h-3 mr-2" />
           Regenerate
         </Button>
-        <Button variant="outline" size="sm" className="bg-slate-900 border-slate-700 hover:border-orange-500 h-8">
+        <Button variant="outline" size="sm" className="bg-muted border-border hover:border-primary h-8">
           <FileDown className="w-3 h-3 mr-2" />
           Export PDF
         </Button>
