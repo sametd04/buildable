@@ -17,9 +17,10 @@ class Settings(BaseSettings):
     llm_provider: str = "openai"  # "openai" or "anthropic"
     llm_model: str = "gpt-4o-mini"  # Default model
     
-    # FLUX API Configuration (for future use)
-    flux_api_key: Optional[str] = None
-    flux_api_url: str = "https://api.flux.dev/v1"
+    # FLUX API Configuration (Black Forest Labs)
+    bfl_api_key: Optional[str] = None
+    flux_model: str = "flux-pro-1.1"  # Options: flux-pro-1.1, flux-pro, flux-dev, flux-schnell
+
     
     # MongoDB Configuration
     mongo_uri: str = "mongodb://localhost:27017"

@@ -1,9 +1,10 @@
 """API routes for triggering graph execution."""
 from fastapi import APIRouter, HTTPException
-from app.api.schemas import BuildRequest, BuildResponse
+from app.api.schemas import BuildRequest, BuildResponse, FluxTestRequest, FluxTestResponse
 from app.core.database import get_inventory, get_inventory_item_by_id
 from app.graph.workflow import get_workflow
 from app.graph.state import AgentState
+from app.services.flux_service import generate_image
 import traceback
 
 
@@ -64,3 +65,44 @@ async def build(request: BuildRequest) -> BuildResponse:
             detail=f"Build failed: {str(e)}\n\nTraceback:\n{error_trace}"
         )
 
+
+
+@router.post("/test-flux", response_model=FluxTestResponse)
+async def test_flux(request: FluxTestRequest) -> FluxTestResponse:
+    """
+    POST /test-flux endpoint.
+    
+    Test the FLUX image generation service directly with custom parameters.
+    Useful for debugging and testing the FLUX API integration.
+    
+    Supports two modes:
+    1. Initial generation: Only provide prompt and material_image_url
+    2. Iterative editing: Also provide previous_image_url to edit an existing image
+    """
+    try:
+        image_url = generate_image(
+            prompt=request.prompt,
+            material_image_url=request.material_image_url,
+            previous_image_url=request.previous_image_url,
+            width=request.width,
+            height=request.height,
+            seed=request.seed,
+        )
+        
+        if image_url:
+            return FluxTestResponse(
+                success=True,
+                image_url=image_url,
+            )
+        else:
+            return FluxTestResponse(
+                success=False,
+                error="Image generation failed. Check server logs for details.",
+            )
+            
+    except Exception as e:
+        error_trace = traceback.format_exc()
+        return FluxTestResponse(
+            success=False,
+            error=f"FLUX test failed: {str(e)}\n\nTraceback:\n{error_trace}",
+        )

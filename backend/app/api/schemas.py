@@ -27,3 +27,31 @@ class BuildResponse(BaseModel):
     final_image_url: Optional[str] = Field(None, description="URL of the generated image")
     error: Optional[str] = Field(None, description="Error message if build failed")
 
+
+class FluxTestRequest(BaseModel):
+    """Request schema for the /test-flux endpoint."""
+    prompt: str = Field(
+        ...,
+        description="The prompt for FLUX describing what to build",
+        min_length=1,
+        max_length=1000,
+    )
+    material_image_url: str = Field(
+        ...,
+        description="URL of the material composition image",
+    )
+    previous_image_url: Optional[str] = Field(
+        None,
+        description="Optional URL of a previous generation step for iterative editing",
+    )
+    width: int = Field(1024, description="Image width", ge=256, le=2048)
+    height: int = Field(1024, description="Image height", ge=256, le=2048)
+    seed: Optional[int] = Field(None, description="Optional seed for reproducible results")
+
+
+class FluxTestResponse(BaseModel):
+    """Response schema for the /test-flux endpoint."""
+    success: bool = Field(..., description="Whether the image generation was successful")
+    image_url: Optional[str] = Field(None, description="URL of the generated image")
+    error: Optional[str] = Field(None, description="Error message if generation failed")
+
