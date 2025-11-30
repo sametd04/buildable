@@ -33,7 +33,7 @@ def check_inventory_status(state: AgentState) -> Literal["agent_c", "agent_a", "
     
     retry_count = state.get("retry_count", 0)
     if retry_count >= 1:
-        return "end_fail"  # Give up after 3 retries
+        return "end_fail"  # Give up after 1 retry
     
     return "agent_a"  # Loop back to Planner
 
