@@ -1,5 +1,5 @@
 """FLUX API service for image generation using Black Forest Labs API."""
-import requests
+import requests, os
 import time
 from typing import Optional
 from app.core.config import settings
@@ -11,7 +11,8 @@ def generate_image(
     previous_image_url: Optional[str] = None,
     width: int = 1024,
     height: int = 1024,
-    seed: Optional[int] = None
+    seed: Optional[int] = None,
+    model_name: Optional[str] = None,
 ) -> Optional[str]:
     """
     Generate an image using FLUX 2 Image Editing API (Black Forest Labs).
@@ -98,6 +99,14 @@ def generate_image(
         else:
             # Initial mode: only materials
             request_json['input_image'] = material_image_url
+
+        # Check if model name is specified
+        if not model_name:
+            model_name = settings.flux_model
+
+        if model_name == "flux-2-flex":
+            request_json['steps'] = 50  # More steps for higher quality
+            request_json['guidance'] = 9.0  # Stronger adherence to prompt
         
         # Add optional seed
         if seed is not None:

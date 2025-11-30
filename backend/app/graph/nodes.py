@@ -8,6 +8,7 @@ from app.core.config import settings
 from app.graph.state import AgentState
 from app.services.tools import get_inventory_retriever_tool, get_inventory_retriever
 from app.utils.parse_prompt import load_prompt
+from app.utils.compose_images import compose_images_to_base64, retrieve_srcs_from_mongo
 
 
 # Initialize LLM based on configuration
@@ -488,13 +489,22 @@ def node_flux_generator(state: AgentState) -> Dict[str, Any]:
     Updates final_image_url and sets status to success in state.
     """
     from app.services.flux_service import generate_image
-    
+    if not state.get("material_image"):
+        state["material_image"] = "https://www.thecontractchair.co.uk/media/re_branding/ck_uploads/from_tiny_editor/ash-wood-table-top%20(3).webp"
+
     # Use previous image if available (for image-to-image editing)
     previous_image = state.get("final_image_url")
-    
+
+    # Get images from mongodb
+    image_ids = state.get("selected_item_ids", [])
+
+    image_src = retrieve_srcs_from_mongo(image_ids)
+    if image_src:
+        state["material_image"]  = compose_images_to_base64(image_src)
+
     image_url = generate_image(
         prompt=state["flux_prompt"],
-        material_image_url="https://www.thecontractchair.co.uk/media/re_branding/ck_uploads/from_tiny_editor/ash-wood-table-top%20(3).webp",
+        material_image_url=state.get("material_image"),
         previous_image_url=previous_image,
     )
     
@@ -694,7 +704,7 @@ def node_assembly_manual_generator(state: AgentState) -> Dict[str, Any]:
         }
     
     # Material image URL (same as used for product image)
-    material_image_url = "https://www.thecontractchair.co.uk/media/re_branding/ck_uploads/from_tiny_editor/ash-wood-table-top%20(3).webp"
+    material_image_url = state.get("material_image")
     
     # Generate a consistent seed based on the construction plan for visual consistency
     construction_plan = state.get("construction_plan", "")
@@ -769,6 +779,7 @@ def node_assembly_manual_generator(state: AgentState) -> Dict[str, Any]:
             width=1024,
             height=1024,
             seed=step_seed,
+            model_name="flux-2-flex",
         )
         
         if image_url:

@@ -23,6 +23,7 @@ import traceback
 import json
 import asyncio
 from typing import AsyncGenerator
+from app.utils.compose_images import compose_images_to_base64, retrieve_srcs_from_mongo
 
 
 router = APIRouter(prefix="/api/v1", tags=["build"])
@@ -411,14 +412,18 @@ async def generate_assembly_manual(request: GenerateAssemblyManualRequest) -> Ge
     assembly instructions with images.
     """
     try:
+        selected_items = request.selected_item_ids
+        selected_items_src = retrieve_srcs_from_mongo(selected_items)
+        material_image = compose_images_to_base64(selected_items_src)  # Preload to verify items exist
         # Create a minimal state with only the data needed for assembly manual generation
         state: AgentState = {
             "user_query": "",  # Not needed for assembly manual
             "style_description": "",  # Not needed for assembly manual
             "construction_plan": request.construction_plan,
-            "selected_item_ids": request.selected_item_ids,
+            "selected_item_ids": selected_items,
             "flux_prompt": None,  # Not needed for assembly manual
             "final_image_url": request.final_image_url,  # Use confirmed product image for consistency
+            "material_image": material_image,
             "assembly_manual_prompts": [],
             "assembly_manual_images": [],
             "retry_count": 0,
