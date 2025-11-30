@@ -192,24 +192,22 @@ def node_style_optimizer(state: AgentState) -> Dict[str, Any]:
             enhanced_query = f"{user_query}\n\nAdditional context from conversation:\n" + "\n".join(context_parts)
     
     if previous_style:
+        prompt_variables = {
+            "user_query": user_query,
+            "previous_style": previous_style,
+        }
+        # Load your markdown template
+        rendered_prompt = load_prompt(
+            prompt_name="optimize_user_query_iter", 
+            variables=prompt_variables
+        )
         # Iterative edit - modify existing description
         prompt = ChatPromptTemplate.from_messages([
-            ("system", """You are an expert Design Consultant. You are modifying an existing design based on new user feedback.
-            
-Previous design description:
-{previous_style}
-
-User's new request: {user_query}
-
-Update the design description to incorporate the user's changes while maintaining the overall vision.
-Focus on what changed (mood, texture, color, lighting, etc.)."""),
-            ("human", "Update the design description based on my request."),
+        ("system", rendered_prompt),
         ])
-        
-        response = llm.invoke(prompt.format_messages(
-            previous_style=previous_style,
-            user_query=enhanced_query
-        ))
+
+        chain = prompt | llm
+        response = chain.invoke({})
     else:
         prompt_variables = {
             "user_query": enhanced_query,
@@ -273,19 +271,19 @@ def node_planner(state: AgentState) -> Dict[str, Any]:
         prompt_variables["clerk_feedback"] = clerk_feedback
         prompt_variables["previous_plan"] = construction_plan or ""
         rendered_prompt = load_prompt(
-        prompt_name="planner_with_clerk_feedback", 
-        variables=prompt_variables
+            prompt_name="planner_with_clerk_feedback", 
+            variables=prompt_variables
         )
     else:
         # Standard planning behavior - use style_description as primary context
         rendered_prompt = load_prompt(
-        prompt_name="planner_without_clerk_feedback", 
-        variables=prompt_variables
+            prompt_name="planner_without_clerk_feedback", 
+            variables=prompt_variables
         )
-        
+
     prompt = ChatPromptTemplate.from_messages([
         ("system", rendered_prompt),
-        ])
+    ])
     
     chain = prompt | llm
     
@@ -335,6 +333,7 @@ def node_inventory_clerk(state: AgentState) -> Dict[str, Any]:
     construction_plan = state["construction_plan"] or ""
     
     # Use the LLM to extract search terms from the plan
+    #TODO: Put this prompt in a markdown file
     extraction_prompt = ChatPromptTemplate.from_messages([
         ("system", """Extract material and part names from a construction plan. 
         Return a comma-separated list of key terms that would be used to search a hardware catalog.
@@ -389,28 +388,22 @@ def node_inventory_clerk(state: AgentState) -> Dict[str, Any]:
 
     }
     
-    #loaded_prompt = load_prompt("inventory_clerk", prompt_variables)
-    
-    # Use structured output with ClerkOutput to validate matches
-    structured_llm = llm.with_structured_output(ClerkOutput)
+    # Load your markdown template
+    rendered_prompt = load_prompt(
+        prompt_name="inventory_clerk", 
+        variables=prompt_variables
+    )
+
+    # Iterative edit - modify existing description
     validation_prompt = ChatPromptTemplate.from_messages([
-        ("system", """Act as an inventory checker. Compare the construction plan against the found inventory items. We only care about raw materials right now (ignore tools and finishes).
-
-If you find what we need, mark is_successful=True and output the IDs. If the inventory falls short, set is_successful=False, list what you found, and tell the planner exactly what's missing. Use your best judgment to ensure the materials are actually suitable."""),
-        ("human", """Construction Plan:
-{construction_plan}
-
-Found Inventory Items:
-{found_items}
-
-Evaluate if these items are suitable for the construction plan. """),
+        ("system", rendered_prompt),
     ])
 
+    # Use structured output with ClerkOutput to validate matches
+    structured_llm = llm.with_structured_output(ClerkOutput)
+
     validation_chain = validation_prompt | structured_llm
-    result = validation_chain.invoke({
-        "construction_plan": construction_plan,
-        "found_items": found_items_text,
-    })
+    result = validation_chain.invoke({})
 
     # Validate IDs are from our found items
     valid_ids = [
@@ -470,25 +463,14 @@ def node_prompt_engineer(state: AgentState) -> Dict[str, Any]:
         "items_description": items_description
     }
     
-    loaded_prompt = load_prompt("promt_engineer", prompt_variables)
+    rendered_prompt = load_prompt("promt_engineer", prompt_variables)
     
     prompt = ChatPromptTemplate.from_messages([
-        ("system", "You are a prompt engineer specializing in photorealistic image generation for FLUX API. Follow the instructions in the prompt carefully."),
-        ("human", loaded_prompt if loaded_prompt else f"""Construction Plan:
-{state.get("construction_plan", "")}
-
-Selected Materials:
-{items_description}
-
-Generate an optimized FLUX prompt for a photorealistic hero shot of this construction project.
-The image should showcase the final result in an impressive, professional manner."""),
+        ("system", rendered_prompt),
     ])
     
     chain = prompt | llm
-    response = chain.invoke({
-        "construction_plan": state.get("construction_plan", ""),
-        "items_description": items_description,
-    })
+    response = chain.invoke({})
     
     flux_prompt = response.content
     
@@ -565,7 +547,6 @@ def node_assembly_manual_prompt_engineer(state: AgentState) -> Dict[str, Any]:
     final_image_context = ""
     if final_image_url:
         final_image_context = f"""
-        
 CRITICAL: The final product image is available at: {final_image_url}
 The assembly manual steps MUST match the visual style, materials, colors, lighting, and overall appearance of this confirmed final product image.
 Analyze the final product image to understand:
@@ -577,70 +558,19 @@ Analyze the final product image to understand:
 - Overall composition and design details
 
 The assembly steps should progressively build toward this exact final product appearance."""
+        
+    construction_plan
+    # Load prompt template from markdown file
+    prompt_variables = {
+        "construction_plan": construction_plan,
+        "items_description": items_description,
+        "final_image_context": final_image_context,
+    }
+    
+    rendered_prompt = load_prompt("promt_engineer", prompt_variables)
     
     prompt = ChatPromptTemplate.from_messages([
-        ("system", """You are a technical writer specializing in creating step-by-step assembly instructions.
-        Your task is to analyze a construction plan and break it down into clear, sequential assembly steps.
-        For each step, generate a detailed visual prompt that describes the ASSEMBLY ACTION being performed.
-        
-        CRITICAL: Each step must show the ACTION/MOVEMENT, not just the static result!
-        
-        ASSEMBLY ACTION REQUIREMENTS:
-        - Each prompt must describe the SPECIFIC ACTION being performed (attaching, connecting, positioning, securing, inserting, etc.)
-        - Show the MOVEMENT or PROCESS, not just the final state
-        - Include visual cues: hands positioning components, tools being used, components being moved into place
-        - Describe the action in progress: "attaching X to Y", "positioning Z", "connecting A to B"
-        - Show components in the process of being assembled, not just fully assembled
-        
-        CRITICAL CONSISTENCY REQUIREMENTS:
-        - Each prompt must explicitly reference what was built in previous steps
-        - Maintain consistent lighting, camera angle, and visual style across all steps
-        - Use consistent terminology for materials and parts throughout
-        - Each step should build logically on the previous one
-        
-        PROMPT STRUCTURE:
-        - Step 1: Describe the initial ACTION (e.g., "Positioning [components] on [surface]...")
-        - Step 2+: Start with "Continuing from the previous step, now [ACTION] [components] to [location]..."
-        - Always use ACTION VERBS: attaching, connecting, positioning, securing, inserting, aligning, fastening, etc.
-        - Include visual elements: hands, tools, movement indicators, components in motion
-        - Show the assembly process, not just the completed state
-        - Maintain the same visual perspective and lighting conditions
-        
-        The prompts should:
-        - Focus on the ACTION being performed (use action verbs)
-        - Show components being moved/positioned/attached (not just final positions)
-        - Include visual cues for the assembly process (hands, tools, movement)
-        - Explicitly reference the previous step's state for continuity
-        - Be optimized for photorealistic technical illustration
-        - Use consistent material names and descriptions
-        - Be concise but detailed (aim for 70-130 words per step)
-        - Describe the ASSEMBLY PROCESS, not just the result
-        
-        Break down the construction plan into 4-8 clear sequential steps.
-        Each step should show a specific assembly action being performed."""),
-        ("human", """Construction Plan:
-{construction_plan}
-
-Selected Materials:
-{items_description}
-{final_image_context}
-
-Generate step-by-step assembly prompts that show ASSEMBLY ACTIONS and MOVEMENTS. Break down the construction plan into clear sequential steps.
-Each prompt must:
-1. Describe the SPECIFIC ACTION being performed (attaching, connecting, positioning, securing, etc.)
-2. Show the MOVEMENT/PROCESS, not just the static result
-3. Include visual cues: hands positioning components, tools, components being moved
-4. For step 2+: Explicitly reference what was built in the previous step, then describe the action to perform
-5. Use consistent material names and terminology throughout
-6. Maintain the same visual style, lighting, and perspective
-7. Focus on the ASSEMBLY ACTION, not just what the structure looks like
-
-Example format:
-Step 1: "Positioning [base components] on [surface], aligning them [details], hands visible placing components..."
-Step 2: "Continuing from step 1, now attaching [new components] to [location] by [method], hands connecting [details], showing the fastening process..."
-Step 3: "Building on step 2, securing [components] to [location] using [method], showing the connection being made, tools visible..."
-Step 4: "Aligning and positioning [components] onto the structure from step 3, hands adjusting placement, showing the alignment process...""
-"""),
+        ("system", rendered_prompt),
     ])
     
     # Use structured output for reliable parsing
