@@ -64,12 +64,10 @@ Using the **Construction Plan** and the **Found Inventory Items**, perform the f
 You must return a structured JSON object with the following fields (this will be automatically parsed):
 
 ```json
-{
   "selected_ids": ["item-id-1", "item-id-2", ...],
   "missing_parts_description": "Description of missing parts (only if is_successful is false)",
   "found_items": ["steel pipe", "wood plank", "LED light"],
   "is_successful": true or false
-}
 ```
 
 **Field Descriptions:**
@@ -91,29 +89,23 @@ You must return a structured JSON object with the following fields (this will be
 
 **Example 1: Successful Match**
 ```json
-{
   "selected_ids": ["507f1f77bcf86cd799439011", "507f1f77bcf86cd799439012"],
   "found_items": ["Steel pipe 1.5 inch", "Wood plank 2x4", "LED strip"],
   "is_successful": true
-}
 ```
 
 **Example 2: Unsuccessful Match (Missing Critical Materials)**
 ```json
-{
   "selected_ids": [],
   "missing_parts_description": "No titanium pipes found in inventory. Only steel and aluminum pipes are available. Found items: steel pipe 1.5 inch, aluminum pipe 2 inch.",
   "found_items": ["Steel pipe 1.5 inch", "Aluminum pipe 2 inch"],
   "is_successful": false
-}
 ```
 
 **Example 3: Partial Match (Some Materials Found)**
 ```json
-{
   "selected_ids": ["507f1f77bcf86cd799439011"],
   "missing_parts_description": "Found steel pipes but no specialized LED strips. Only standard LED lights available. Found items: steel pipe 1.5 inch, standard LED light.",
   "found_items": ["Steel pipe 1.5 inch", "Standard LED light"],
   "is_successful": false
-}
 ```
