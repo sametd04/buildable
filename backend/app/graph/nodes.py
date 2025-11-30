@@ -294,6 +294,10 @@ Evaluate if these items are suitable for the construction plan. """),
         return_state["clerk_feedback"] = result.missing_parts_description or (
             "No suitable inventory items found for the required materials in the construction plan. Here are the items I found: " + found_items_text
         )
+        if state.get("retry_count") == 1:
+            # On final retry, just return
+            return_state["is_clerk_successful"] = True  # Force success for now
+            return_state["clerk_feedback"] = "The following required materials are missing or unsuitable: " + result.missing_parts_description
     else:
         # Clear any previous feedback on success
         return_state["clerk_feedback"] = None
