@@ -60,6 +60,9 @@ def node_conversation_agent(state: AgentState) -> Dict[str, Any]:
     conversation_history = state.get("conversation_history", [])
     user_query = state.get("user_query", "")
     skip_conversation = state.get("skip_conversation", False)
+    print(f"user_query: {user_query}")
+    print(f"skip_conversation: {skip_conversation}")
+    print(f"conversation_history: {conversation_history}")
     
     # If user wants to skip, proceed immediately
     if skip_conversation:
@@ -117,6 +120,9 @@ IMPORTANT RULES:
 - Only call the RequiredData tool AFTER you have asked about all 6 fields and received responses
 - For optional fields (4-6), if the user says "none" or "no preference", you can leave them empty in the tool call
 - Required fields (1-3) must have actual answers from the user
+
+**CRITICAL CONTEXT - User's original request: {user_query}**
+Remember: The user originally wanted to build: {user_query}. When you extract the conversation data, make sure to preserve the furniture type (e.g., "chair", "table", "desk") from the original request. The use_case field describes the purpose (e.g., "dining"), but the furniture type from the original request must be preserved.
 
 Continue the conversation by asking about the remaining fields you haven't covered yet."""
         messages.append(SystemMessage(content=system_prompt))
@@ -180,13 +186,18 @@ Continue the conversation by asking about the remaining fields you haven't cover
             "conversation_data": conversation_data,
             "ready_for_workflow": True,
             "status": "processing",
+            # Explicitly preserve user_query to ensure it flows to the workflow
+            "user_query": user_query,
         }
     else:
+        print(state.get("user_query", ""))
         return {
             "conversation_history": conversation_history,
             "conversation_data": state.get("conversation_data", {}),
             "ready_for_workflow": False,
             "status": "conversation",
+            # Explicitly preserve user_query
+            "user_query": user_query,
         }
 
 
@@ -487,7 +498,7 @@ def node_prompt_engineer(state: AgentState) -> Dict[str, Any]:
     for item_id in state["selected_item_ids"]:
         item = get_inventory_item_by_id(item_id)
         if item:
-            selected_items.append(item)
+            selected_items.append({"id": item_id, "name": item.get("name"), "description": item.get("description"), "src": item.get("src")})
     
     items_description = "\n".join([
         f"- {item.get('name')}: {item.get('description', 'No description')}"
@@ -779,7 +790,7 @@ def node_assembly_manual_generator(state: AgentState) -> Dict[str, Any]:
             material_image_url=material_image_url,
             width=1024,
             height=1024,
-            seed=step_seed,
+            seed=seed,
             model_name="flux-2-flex",
         )
         

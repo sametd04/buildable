@@ -234,8 +234,18 @@ async def build(request: BuildRequest) -> BuildResponse:
     """
     try:
         # Initialize state (no need to load inventory into memory)
-        # If skip_conversation is True and user_query is empty, use a default
+        # Extract user_query - prioritize request, then extract from conversation_history, then use default
         user_query = request.user_query.strip() if request.user_query else ""
+        
+        # If user_query is empty, try to extract it from conversation_history
+        if not user_query and request.conversation_history:
+            # Find the first user message in conversation_history
+            for msg in request.conversation_history:
+                if msg.get("role") == "user" and msg.get("content"):
+                    user_query = msg.get("content", "").strip()
+                    break
+        
+        # If still empty and skip_conversation is True, use a default
         if request.skip_conversation and not user_query:
             user_query = "Generate a design based on available materials"
         
