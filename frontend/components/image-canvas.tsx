@@ -49,8 +49,8 @@ function ImageNodeComponent({ data }: { data: ImageNode }) {
           : "border-2 border-border shadow-lg"
       }`}
       style={{
-        width: data.isMinimized ? "150px" : "400px",
-        height: data.isMinimized ? "150px" : "400px",
+        width: data.isMinimized ? "200px" : "500px",
+        height: data.isMinimized ? "200px" : "500px",
       }}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
@@ -101,6 +101,16 @@ export function ImageCanvas({ images, currentImageIndex, onImageSelect, selected
   const [showError, setShowError] = useState(false)
   const [reactFlowInstance, setReactFlowInstance] = useState<any>(null)
   const [manuallyMinimized, setManuallyMinimized] = useState<Record<number, boolean>>({})
+
+  const toggleNodeSize = (index: number) => {
+    setManuallyMinimized((prev) => {
+      const currentState = prev[index] !== undefined ? prev[index] : (index !== images.length - 1)
+      return {
+        ...prev,
+        [index]: !currentState,
+      }
+    })
+  }
 
   // Build nodes and edges from images
   useEffect(() => {
@@ -164,7 +174,7 @@ export function ImageCanvas({ images, currentImageIndex, onImageSelect, selected
         reactFlowInstance.fitView({ duration: 800, padding: 0.2 })
       }, 100)
     }
-  }, [images, selectedParents, setNodes, setEdges, reactFlowInstance])
+  }, [images, selectedParents, manuallyMinimized, setNodes, setEdges, reactFlowInstance])
 
   const handleNodeSelect = (index: number) => {
     if (!onParentSelect) return
@@ -183,16 +193,6 @@ export function ImageCanvas({ images, currentImageIndex, onImageSelect, selected
       }
       onParentSelect([...selectedParents, index])
     }
-  }
-
-  const toggleNodeSize = (index: number) => {
-    setManuallyMinimized((prev) => {
-      const currentState = prev[index] !== undefined ? prev[index] : (index !== images.length - 1)
-      return {
-        ...prev,
-        [index]: !currentState,
-      }
-    })
   }
 
   const onConnect = useCallback(
@@ -214,6 +214,7 @@ export function ImageCanvas({ images, currentImageIndex, onImageSelect, selected
         minZoom={0.1}
         maxZoom={2}
         defaultViewport={{ x: 0, y: 0, zoom: 0.8 }}
+        proOptions={{ hideAttribution: true }}
       >
         <Background color="hsl(var(--border))" gap={20} />
         <Controls className="bg-card border border-border rounded" showInteractive={false} />

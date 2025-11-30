@@ -16,11 +16,21 @@ def get_llm():
     if not settings.openai_api_key:
         raise ValueError("OpenAI API key not set. Set OPENAI_API_KEY in .env")
     
-    llm = ChatOpenAI(
-        model=settings.llm_model,
-        api_key=settings.openai_api_key,
-        temperature=0.7,
-    )
+    # Some models don't support temperature parameter (o1, o3, o4 series)
+    # Only set temperature for models that support it
+    llm_kwargs = {
+        "model": settings.llm_model,
+        "api_key": settings.openai_api_key,
+    }
+    
+    # Models that don't support temperature: o1, o3, o4 series
+    model_lower = settings.llm_model.lower()
+    supports_temperature = not any(prefix in model_lower for prefix in ["o1", "o3", "o4"])
+    
+    if supports_temperature:
+        llm_kwargs["temperature"] = 0.7
+    
+    llm = ChatOpenAI(**llm_kwargs)
     
     return llm
 
@@ -221,11 +231,11 @@ def node_inventory_clerk(state: AgentState) -> Dict[str, Any]:
                 item_doc = dict(doc.metadata)  # Make a copy
                 # Convert _id to id if needed
                 item_doc = _convert_objectid_to_id(item_doc)
-                item_id = doc.id
-                item_doc["id"] = str(item_id)
+                # Use the string ID from the document, not the ObjectID
+                item_id = item_doc.get("id")
                 
-                if item_id and str(item_id) not in selected_ids:
-                    selected_ids.add(str(item_id))
+                if item_id and item_id not in selected_ids:
+                    selected_ids.add(item_id)
                     all_found_items.append(item_doc)
     
     # Format found items for validation
@@ -629,7 +639,7 @@ def node_assembly_manual_generator(state: AgentState) -> Dict[str, Any]:
     final_image_url = state.get("final_image_url")
     
     assembly_images = []
-    previous_image_url = None
+    all_previous_images = []  # Track ALL previous images for context
     previous_step_description = None
     
     # Generate images for each step
@@ -669,8 +679,15 @@ def node_assembly_manual_generator(state: AgentState) -> Dict[str, Any]:
             # Ensure the prompt explicitly references maintaining the previous state
             if "continuing from" not in enhanced_prompt.lower() and "previous step" not in enhanced_prompt.lower():
                 enhanced_prompt = f"Continuing from the previous assembly step, {enhanced_prompt.lower()}"
-            # Add consistency and action instructions
-            enhanced_prompt += " Maintain the exact same lighting, camera angle, and visual style as the previous step. Keep all previously assembled components in their exact positions. Show the assembly action in progress with hands or tools visible."
+            
+            # Add context about ALL previous steps for better consistency
+            steps_context = f" This is step {i+1} of {len(assembly_prompts)}. Previous steps have already completed: "
+            for prev_idx in range(i):
+                steps_context += f"Step {prev_idx+1} (completed), "
+            steps_context = steps_context.rstrip(", ") + "."
+            
+            # Add STRONG consistency instructions - emphasize keeping previous work
+            enhanced_prompt += steps_context + " CRITICAL: Keep ALL previously assembled components from ALL previous steps EXACTLY as they were. DO NOT modify, remove, or change any existing parts from any previous step. Maintain the EXACT same lighting, camera angle, background, and visual style established in step 1. Only show the NEW assembly action being added to the existing structure. All previous assembly work must remain completely unchanged and visible."
         
         # Add consistency and action instructions for all steps
         if i == 0:
@@ -678,14 +695,17 @@ def node_assembly_manual_generator(state: AgentState) -> Dict[str, Any]:
             enhanced_prompt += " Professional technical illustration showing assembly action in progress. Consistent lighting from the front-left, neutral background, clear focus on assembly components. Show hands positioning components or tools being used." + final_image_note
         else:
             # Subsequent steps: maintain consistency with action focus
-            enhanced_prompt += " Maintain identical lighting, perspective, and visual style as previous steps. Show the assembly action being performed with hands or tools visible. Only add new components without changing existing ones." + final_image_note
+            enhanced_prompt += " Maintain IDENTICAL lighting, perspective, camera position, and visual style as previous steps. Show the assembly action being performed with hands or tools visible. The image should look like a continuation of the previous step with only new components being added." + final_image_note
         
         # Use a consistent seed with slight variation per step for reproducibility
         # Same base seed ensures similar style, slight variation prevents exact duplicates
         step_seed = (base_seed + i) % (2**31)
         
         # For the first step, generate from materials
-        # For subsequent steps, use iterative editing with previous image
+        # For subsequent steps, use iterative editing with the MOST RECENT image
+        # (FLUX API only supports 2 images, but we reference all previous steps in the prompt)
+        previous_image_url = all_previous_images[-1] if all_previous_images else None
+        
         image_url = generate_image(
             prompt=enhanced_prompt,
             material_image_url=material_image_url,
@@ -697,7 +717,7 @@ def node_assembly_manual_generator(state: AgentState) -> Dict[str, Any]:
         
         if image_url:
             assembly_images.append(image_url)
-            previous_image_url = image_url  # Use this as the base for the next step
+            all_previous_images.append(image_url)  # Add to the list of ALL previous images
             # Store a brief description of this step for next iteration
             previous_step_description = step_prompt[:100]  # Store first 100 chars as reference
         else:

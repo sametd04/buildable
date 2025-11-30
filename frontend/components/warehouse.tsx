@@ -89,23 +89,33 @@ export function Warehouse({
     }
   }
 
-  // Use selectedItemsData if available, otherwise fall back to fetched inventory
-  const displayItems = selectedItemsData && selectedItemsData.length > 0 ? selectedItemsData : inventoryItems
+  // Always show all inventory items (not just selected ones)
+  const displayItems = inventoryItems
 
   const [filteredItems, setFilteredItems] = useState(displayItems)
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      setFilteredItems(
-        displayItems.filter(
-          (item) =>
-            item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            (item.category && item.category.toLowerCase().includes(searchQuery.toLowerCase())),
-        ),
+      const filtered = displayItems.filter(
+        (item) =>
+          item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (item.category && item.category.toLowerCase().includes(searchQuery.toLowerCase())),
       )
+      
+      // Sort: selected items first, then unselected
+      const sorted = filtered.sort((a, b) => {
+        const aSelected = selectedItems.includes(a.id)
+        const bSelected = selectedItems.includes(b.id)
+        
+        if (aSelected && !bSelected) return -1
+        if (!aSelected && bSelected) return 1
+        return 0
+      })
+      
+      setFilteredItems(sorted)
     }, 300)
     return () => clearTimeout(timer)
-  }, [searchQuery, displayItems])
+  }, [searchQuery, displayItems, selectedItems])
 
   return (
     <div className="flex flex-col h-full p-4 gap-4">
