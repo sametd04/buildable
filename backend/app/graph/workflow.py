@@ -8,6 +8,8 @@ from app.graph.nodes import (
     node_inventory_clerk,
     node_prompt_engineer,
     node_flux_generator,
+    node_assembly_manual_prompt_engineer,
+    node_assembly_manual_generator,
 )
 
 
@@ -30,8 +32,8 @@ def check_inventory_status(state: AgentState) -> Literal["agent_c", "agent_a", "
         return "agent_c"  # Proceed to Prompt Engineering
     
     retry_count = state.get("retry_count", 0)
-    if retry_count >= 3:
-        return "end_fail"  # Give up after 3 retries
+    if retry_count >= 1:
+        return "end_fail"  # Give up after 1 retry
     
     return "agent_a"  # Loop back to Planner
 
@@ -68,12 +70,16 @@ def increment_retry_count(state: AgentState) -> dict:
     }
 
 
+
+
 def create_workflow() -> StateGraph:
     """
     Create and compile the LangGraph workflow with feedback loop.
     
     The workflow includes a feedback loop:
-    START -> Style Optimizer -> Planner -> Inventory Clerk -> (conditional) -> Prompt Engineer -> Flux Generator -> END
+    START -> Style Optimizer -> Planner -> Inventory Clerk -> (conditional) -> Prompt Engineer -> 
+    [Flux Generator -> END] (parallel)
+    [Assembly Manual Prompt Engineer -> Assembly Manual Generator -> END] (parallel)
                                                                                 |
                                                                                 v (if failed)
                                                                             Planner (retry)
@@ -92,6 +98,8 @@ def create_workflow() -> StateGraph:
     workflow.add_node("inventory_clerk", node_inventory_clerk)
     workflow.add_node("prompt_engineer", node_prompt_engineer)
     workflow.add_node("flux_generator", node_flux_generator)
+    workflow.add_node("assembly_manual_prompt_engineer", node_assembly_manual_prompt_engineer)
+    workflow.add_node("assembly_manual_generator", node_assembly_manual_generator)
     
     # Add helper nodes
     workflow.add_node("increment_retry", increment_retry_count)
@@ -119,9 +127,17 @@ def create_workflow() -> StateGraph:
     # After setting failure status, end
     workflow.add_edge("set_failure_status", END)
     
-    # Continue with normal flow after success
+    # Continue with normal flow after success - run product image and assembly manual in parallel
+    # Both paths start from prompt_engineer and execute concurrently
+    # Path 1: Product image generation
     workflow.add_edge("prompt_engineer", "flux_generator")
     workflow.add_edge("flux_generator", END)
+    
+    # Path 2: Assembly manual generation (runs in parallel with product image)
+    # Note: LangGraph executes both edges from prompt_engineer in parallel
+    workflow.add_edge("prompt_engineer", "assembly_manual_prompt_engineer")
+    workflow.add_edge("assembly_manual_prompt_engineer", "assembly_manual_generator")
+    workflow.add_edge("assembly_manual_generator", END)
     
     # Compile the graph
     app = workflow.compile()

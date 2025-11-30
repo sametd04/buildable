@@ -16,6 +16,7 @@ export default function BuildableDashboard() {
   const [isThinking, setIsThinking] = useState(false)
   const [generatedImage, setGeneratedImage] = useState<string | null>(null)
   const [constructionPlan, setConstructionPlan] = useState<string | null>(null)
+  const [assemblyManualImages, setAssemblyManualImages] = useState<string[]>([])
   const scrollRef = useRef<HTMLDivElement>(null)
   const [assemblyHeight, setAssemblyHeight] = useState(60) // percentage
 
@@ -64,20 +65,23 @@ export default function BuildableDashboard() {
         const updated = prev.map((msg) =>
           msg.id === thinkingMessageId
             ? {
-                ...msg,
-                content: response.success
-                  ? "Build completed successfully!"
-                  : "Build failed - see details below",
-                steps: response.success
-                  ? [
-                      "✓ Style description generated",
-                      "✓ Construction plan created",
-                      `✓ ${response.selected_item_ids.length} materials selected`,
-                      "✓ Image prompt optimized",
-                      response.final_image_url ? "✓ Image generated" : "⏳ Image generation in progress",
-                    ]
-                  : [`✗ Error: ${response.error || "Unknown error"}`],
-              }
+              ...msg,
+              content: response.success
+                ? "Build completed successfully!"
+                : "Build failed - see details below",
+              steps: response.success
+                ? [
+                  "✓ Style description generated",
+                  "✓ Construction plan created",
+                  `✓ ${response.selected_item_ids.length} materials selected`,
+                  "✓ Image prompt optimized",
+                  response.final_image_url ? "✓ Image generated" : "⏳ Image generation in progress",
+                  response.assembly_manual_images && response.assembly_manual_images.length > 0
+                    ? `✓ Assembly manual generated (${response.assembly_manual_images.length} steps)`
+                    : "⏳ Generating assembly manual...",
+                ]
+                : [`✗ Error: ${response.error || "Unknown error"}`],
+            }
             : msg,
         )
         return updated
@@ -89,6 +93,7 @@ export default function BuildableDashboard() {
         setSelectedItems(response.selected_item_ids)
         setSelectedItemsData(response.selected_items)
         setGeneratedImage(response.final_image_url || null)
+        setAssemblyManualImages(response.assembly_manual_images || [])
 
         // Add success message
         setAgentMessages((prev) => [
@@ -113,6 +118,7 @@ export default function BuildableDashboard() {
         setSelectedItems([])
         setSelectedItemsData([])
         setGeneratedImage(null)
+        setAssemblyManualImages([])
       }
     } catch (error) {
       // Handle API error
@@ -172,6 +178,7 @@ export default function BuildableDashboard() {
           <AssemblyWorkbench
             generatedImage={generatedImage}
             constructionPlan={constructionPlan}
+            assemblyManualImages={assemblyManualImages}
             onRegenerate={() => setGeneratedImage(null)}
           />
         </div>

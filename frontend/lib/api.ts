@@ -24,6 +24,8 @@ export interface BuildResponse {
   selected_items: InventoryItem[]
   flux_prompt?: string
   final_image_url?: string
+  assembly_manual_prompts?: string[]
+  assembly_manual_images?: string[]
   error?: string
 }
 

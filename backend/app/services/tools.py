@@ -6,12 +6,12 @@ from app.core.config import settings
 from app.core.database import get_database
 
 
-def get_inventory_retriever_tool():
+def get_inventory_retriever():
     """
-    Create a LangChain retriever tool for semantic search of the hardware inventory.
+    Create a LangChain retriever for semantic search of the hardware inventory.
     
     Returns:
-        A LangChain tool that can be used by agents to search the inventory.
+        A LangChain retriever that returns Document objects with full MongoDB document metadata.
     """
     if not settings.openai_api_key:
         raise ValueError("OPENAI_API_KEY not set. Required for vector search.")
@@ -38,6 +38,18 @@ def get_inventory_retriever_tool():
         search_kwargs={"k": 5}  # Return top 5 matches
     )
     
+    return retriever
+
+
+def get_inventory_retriever_tool():
+    """
+    Create a LangChain retriever tool for semantic search of the hardware inventory.
+    
+    Returns:
+        A LangChain tool that can be used by agents to search the inventory.
+    """
+    retriever = get_inventory_retriever()
+    
     # Create the retriever tool
     tool = create_retriever_tool(
         retriever=retriever,
@@ -46,6 +58,7 @@ def get_inventory_retriever_tool():
         "Use this tool to find inventory items that match a description or requirement. "
         "Returns a list of matching items with their IDs, names, descriptions, and categories. "
         "Input should be a search query describing the part or material you need.",
+        response_format="content_and_artifact"
     )
     
     return tool

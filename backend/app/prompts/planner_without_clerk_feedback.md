@@ -37,7 +37,6 @@ Using the **Optimized Style Description** and cross-referencing against the capa
 Return the assembly plan using the exact structure below, detailing the logical sequence:
 
 **Construction Assembly Plan:**
-${ASSEMBLY_SEQUENCE_START}$
 
 ### 1. Base Assembly & Support Structure
 * **Objective:** To construct the main vertical load-bearing elements.
@@ -58,7 +57,5 @@ ${ASSEMBLY_SEQUENCE_START}$
 * **Objective:** To complete non-structural elements and ensure stability.
 * **Parts Needed (Conceptual):** [List of required conceptual parts, e.g., "Rubber feet or leveling pads", "Corner braces (if required)"]
 * **Steps:** [Detailed steps for this stage, e.g., "Install rubber feet onto the floor flanges. Verify all connections are tight and the structure is plumb and level."]
-
-${ASSEMBLY_SEQUENCE_END}$
 
 Return **only** the construction assembly plan within the designated tags. Do not include explanations, commentary, or metadata.

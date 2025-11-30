@@ -44,7 +44,6 @@ You must perform a **mandatory revision** of the previous plan by strictly adher
 Return the **Revised Construction Assembly Plan** using the exact structure below. All sections must be fully rewritten to reflect the material substitutions and new assembly steps.
 
 **Revised Construction Assembly Plan:**
-${ASSEMBLY\_SEQUENCE\_START}$
 
 ### 1. Base Assembly & Support Structure
 * **Objective:** To construct the main vertical load-bearing elements using alternative available materials.
@@ -65,7 +64,5 @@ ${ASSEMBLY\_SEQUENCE\_START}$
 * **Objective:** To complete non-structural elements and ensure stability of the revised structure.
 * **Parts Needed (Conceptual - Revised):** [List of required conceptual parts, incorporating substitutions.]
 * **Steps:** [Detailed steps for this stage, updated to reflect the new materials and connection methods.]
-
-${ASSEMBLY\_SEQUENCE\_END}$
 
 Return **only** the construction assembly plan within the designated tags. Do not include explanations, commentary, or metadata.

@@ -12,9 +12,11 @@ def load_prompt(prompt_name: str, variables: dict) -> str:
     Returns:
         str: Rendered string with best-effort substitution.
     """
-    prompt_dir = "/backend/app/prompts/"
+    # Get the directory of this file and navigate to prompts directory
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    prompt_dir = os.path.join(current_dir, "..", "prompts")
 
-    if os.path.exists(prompt_dir):  # Sanity check on predefined directory path
+    if not os.path.exists(prompt_dir):  # Sanity check on predefined directory path
         print(f"Warning: prompt directory '{prompt_dir}' does not exist")
         return ""
 
