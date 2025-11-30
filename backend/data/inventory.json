@@ -10,7 +10,7 @@
     "id": "WALNUT-TT-002",
     "name": "Pur Iternal Black Edition Table Top",
     "category": "Wood/Furniture",
-    "scr": "https://media.cdn.bauhaus/m/284260/prod_large_square.webp?width=1920&quality=75",
+    "src": "https://media.cdn.bauhaus/m/284260/prod_large_square.webp?width=1920&quality=75",
     "description": "Solid American Walnut table top (Prod. Nr. 27255915) with finger-jointed lamellae and a UV-oil finish. Dimensions: 200 cm L x 80 cm W x 2.7 cm T. Net weight: 28.9 kg. Price: 235.00 € (incl. VAT)."
   },  
   {
@@ -24,7 +24,7 @@
     "id": "SS-SCREW-2.9X13",
     "name": "Marinetech Sheet Metal Screw",
     "category": "Fastener/Stainless Steel",
-    "screw": "https://media.cdn.bauhaus/m/512219/prod_large_square.webp?width=1920&quality=75",
+    "src": "https://media.cdn.bauhaus/m/512219/prod_large_square.webp?width=1920&quality=75",
     "description": "Corrosion-resistant A4 Stainless Steel screw (Prod. Nr. 23655285) with a Countersunk head and Pozidriv drive. Dimensions: 2.9 mm diameter x 13.0 mm length. Suitable for fastening thin sheet metal. Price: 0.21 € per piece (incl. VAT)."
   },
   {
@@ -121,29 +121,6 @@
     "src": "https://media.cdn.bauhaus/m/2743135-2/prod_large_square.webp?width=1920&quality=75",
     "description": "Black, powder-coated steel spider-style table leg (Prod. Nr. 31958710) in an industrial design. Includes mounting plate, adjustable glides, and assembly hardware. Dimensions: 140 cm length x 70 cm width x 72 cm height. Ideal for dining or office tables with a table top width between 70 cm and 90 cm. Price: 165.00 € per piece (incl. VAT).",
     "material": "Steel (Powder-coated)"
-  },
-
-
-  {
-    "id": "SS-SCREW-2.9X13",
-    "name": "Marinetech Sheet Metal Screw",
-    "category": "Fastener/Stainless Steel",
-    "src": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3f/Placeholder_view_vector.svg/330px-Placeholder_view_vector.svg.png",
-    "description": "Corrosion-resistant A4 Stainless Steel screw (Prod. Nr. 23655285) with a Countersunk head and Pozidriv drive. Dimensions: 2.9 mm diameter x 13.0 mm length. Suitable for fastening thin sheet metal. Price: 0.21 € per piece (incl. VAT)."
-  },
-  {
-    "id": "STEEL-LEG-PUR-V-002",
-    "name": "Pur Iternal Black Edition Table Leg",
-    "category": "Metal/Structural",
-    "src": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3f/Placeholder_view_vector.svg/330px-Placeholder_view_vector.svg.png",
-    "description": "X-shaped table leg set (Prod. Nr. 27197761) made of black powder-coated steel. Dimensions: 700 mm W x 723 mm H. Net weight: 16.0 kg (set of 2). Suitable for table tops 80–90 cm wide. Price: 265.00 € per unit (incl. VAT)."
-  },
-  {
-    "id": "STEEL-LEG-PUR-U-003",
-    "name": "Pur Iternal Black Edition Table Leg",
-    "category": "Metal/Structural",
-    "src": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3f/Placeholder_view_vector.svg/330px-Placeholder_view_vector.svg.png",
-    "description": "U-shaped table leg set (Prod. Nr. 27197770) made of black powder-coated steel. Dimensions: 800 mm W x 723 mm H. Net weight: 19.2 kg (set of 2). Designed for table tops 80–90 cm wide. Price: 265.00 € per unit (incl. VAT)."
   },
   {
     "id": "OAK-PLANK-RAW-005",

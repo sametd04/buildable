@@ -10,6 +10,13 @@ from app.services.tools import get_inventory_retriever_tool, get_inventory_retri
 from app.utils.parse_prompt import load_prompt
 from app.utils.compose_images import compose_images_to_base64, retrieve_srcs_from_mongo
 
+# Imports for Image Composition
+from PIL import Image, ImageDraw, ImageFont
+import requests
+from io import BytesIO
+import base64
+import math
+
 
 # Initialize LLM based on configuration
 def get_llm():
@@ -20,7 +27,7 @@ def get_llm():
     llm = ChatOpenAI(
         model=settings.llm_model,
         api_key=settings.openai_api_key,
-        temperature=0.7,
+        temperature=0.3,  # Lower temperature for more focused responses
     )
     
     return llm
@@ -65,26 +72,51 @@ def node_conversation_agent(state: AgentState) -> Dict[str, Any]:
     messages = []
     if len(conversation_history) == 0:
         # First message - add system prompt
-        system_prompt = f"""You are a friendly and helpful design consultant helping users create custom DIY furniture and structures.
+        system_prompt = f"""You gather info, then call RequiredData tool. NO explanations.
 
-Your goal is to have a natural conversation to gather the following information:
-1. **Use Case & Purpose**: What will this be used for? (e.g., workspace, storage, decoration)
-2. **Dimensions & Size**: Approximate size requirements (e.g., "fits in a corner", "desk height", "shelf width")
-3. **Style Preferences**: Aesthetic style, mood, colors, textures (e.g., industrial, minimalist, rustic, modern)
-4. **Material Preferences**: Any specific material preferences or constraints (e.g., wood type, metal finish) - optional
-5. **Personalization**: Any personal touches or specific requirements (e.g., "needs to match my existing furniture") - optional
-6. **Constraints**: Any space, budget, or functional constraints - optional
+EXAMPLE 1:
+User: "build me a simple chair"
+Analysis: ✓ use_case (chair), ✓ dimensions (standard), ✓ style (simple)
+Action: Call RequiredData(use_case="chair", dimensions="standard adult chair size", style_preferences="simple and functional")
 
-Keep the conversation natural and friendly. Ask 1-2 questions at a time. Don't be overwhelming.
+EXAMPLE 2:
+User: "I need a shelf"
+Analysis: ✓ use_case (shelf), ✗ dimensions, ✗ style
+Action: Ask "What size and style do you prefer?"
 
-IMPORTANT: Once you have gathered enough information to fill in the required fields (use_case, dimensions, style_preferences), you should call the RequiredData tool with the information you've collected. The material_preferences, personalization, and constraints fields are optional and can be left empty if not mentioned.
+NOW YOUR TURN:
+User: "{user_query}"
 
-User's initial request: {user_query}
-
-Start the conversation by asking 1-2 clarifying questions to better understand their needs."""
+If you have use_case + dimensions + style → Call RequiredData tool NOW
+If missing info → Ask ONE question (max 10 words)
+NEVER give building instructions or detailed plans."""
         messages.append(SystemMessage(content=system_prompt))
         messages.append(HumanMessage(content=user_query))
     else:
+        # Convert existing conversation history to LangChain messages
+        # Add system prompt to remind agent of the fields to ask about
+        system_prompt = """You are a friendly and helpful design consultant helping users create custom DIY furniture and structures.
+
+CRITICAL: You MUST always ask about ALL of the following fields before calling the RequiredData tool. Ask about them systematically, one or two at a time:
+
+1. **Use Case & Purpose**: What will this be used for? (e.g., workspace, storage, decoration)
+2. **Dimensions & Size**: Approximate size requirements (e.g., "fits in a corner", "desk height", "shelf width")
+3. **Style Preferences**: Aesthetic style, mood, colors, textures (e.g., industrial, minimalist, rustic, modern)
+4. **Material Preferences**: Any specific material preferences or constraints (e.g., wood type, metal finish) - optional but still ask
+5. **Personalization**: Any personal touches or specific requirements (e.g., "needs to match my existing furniture") - optional but still ask
+6. **Constraints**: Any space, budget, or functional constraints - optional but still ask
+
+IMPORTANT RULES:
+- You MUST ask about all 6 fields, even if some are optional
+- Ask 1-2 questions at a time in a natural, friendly way
+- Don't be overwhelming - keep it conversational
+- Only call the RequiredData tool AFTER you have asked about all 6 fields and received responses
+- For optional fields (4-6), if the user says "none" or "no preference", you can leave them empty in the tool call
+- Required fields (1-3) must have actual answers from the user
+
+Continue the conversation by asking about the remaining fields you haven't covered yet."""
+        messages.append(SystemMessage(content=system_prompt))
+        
         # Convert existing conversation history to LangChain messages
         for msg in conversation_history:
             role = msg.get("role", "user")
@@ -118,8 +150,14 @@ Start the conversation by asking 1-2 clarifying questions to better understand t
     has_tool_call = False
     conversation_data = {}
     
+    print(f"🔍 Checking for tool calls in response...")
+    print(f"   Has tool_calls attribute: {hasattr(response, 'tool_calls')}")
+    if hasattr(response, "tool_calls"):
+        print(f"   Tool calls: {response.tool_calls}")
+    
     if hasattr(response, "tool_calls") and response.tool_calls:
         for tool_call in response.tool_calls:
+            print(f"   → Tool call found: {tool_call.get('name')}")
             if tool_call.get("name") == "RequiredData" or "RequiredData" in str(tool_call):
                 has_tool_call = True
                 args = tool_call.get("args", {})
@@ -131,12 +169,16 @@ Start the conversation by asking 1-2 clarifying questions to better understand t
                     "personalization": args.get("personalization", ""),
                     "constraints": args.get("constraints", ""),
                 }
+                print(f"✅ RequiredData tool called with: {conversation_data}")
                 # Add confirmation message
                 conversation_history.append({
                     "role": "assistant",
                     "content": "Great! I have enough information to create your design. Let me proceed with generating it...",
                 })
                 break
+    
+    if not has_tool_call:
+        print(f"❌ No RequiredData tool call found - staying in conversation mode")
     
     if has_tool_call:
         return {
@@ -514,10 +556,23 @@ def node_flux_generator(state: AgentState) -> Dict[str, Any]:
     }
 
 
+class AssemblyLayer(BaseModel):
+    """One layer/item in an assembly step image."""
+    item_name: str = Field(description="Name of the item (e.g. 'Leg', 'Bolt')")
+    quantity: int = Field(description="Number of items in this group")
+    layer_prompt: str = Field(description="Prompt to generate ONE representative image of this item on a white background")
+
+
+class AssemblyStep(BaseModel):
+    """One step in the assembly process."""
+    instruction: str = Field(description="Text instruction for this step")
+    layers: List[AssemblyLayer] = Field(description="List of item groups needed for this step")
+
+
 class AssemblyManualOutput(BaseModel):
     """Pydantic model for structured output from Assembly Manual Prompt Engineer."""
-    steps: List[str] = Field(
-        description="List of prompts for each assembly step, in sequential order"
+    steps: List[AssemblyStep] = Field(
+        description="List of assembly steps"
     )
 
 
@@ -526,9 +581,8 @@ def node_assembly_manual_prompt_engineer(state: AgentState) -> Dict[str, Any]:
     """
     Assembly Manual Prompt Engineer Node
     
-    Receives construction_plan and generates step-by-step prompts for FLUX 2
-    to create an assembly manual. Each prompt describes one step of the assembly process.
-    Updates assembly_manual_prompts in state.
+    Receives construction_plan and generates step-by-step prompts using Layered Label + Sample strategy.
+    Updates assembly_manual_prompts in state (now a list of step objects/dicts).
     """
     llm = get_llm()
     
@@ -556,132 +610,130 @@ def node_assembly_manual_prompt_engineer(state: AgentState) -> Dict[str, Any]:
     final_image_url = state.get("final_image_url")
     final_image_context = ""
     if final_image_url:
-        final_image_context = f"""
-CRITICAL: The final product image is available at: {final_image_url}
-The assembly manual steps MUST match the visual style, materials, colors, lighting, and overall appearance of this confirmed final product image.
-Analyze the final product image to understand:
-- The exact visual style and aesthetic
-- Material textures and finishes
-- Color scheme and tones
-- Lighting conditions and mood
-- Camera angle and perspective
-- Overall composition and design details
-
-The assembly steps should progressively build toward this exact final product appearance."""
-        
-    construction_plan
-    # Load prompt template from markdown file
+        final_image_context = f"CRITICAL: The final product image is available at: {final_image_url}"
+    
     prompt_variables = {
         "construction_plan": construction_plan,
         "items_description": items_description,
         "final_image_context": final_image_context,
     }
     
-    rendered_prompt = load_prompt("promt_engineer", prompt_variables)
+    # Load new prompt template
+    rendered_prompt = load_prompt("assembly_manual", prompt_variables)
     
     prompt = ChatPromptTemplate.from_messages([
         ("system", rendered_prompt),
     ])
     
-    # Use structured output for reliable parsing
+    # Use structured output
+    structured_llm = llm.with_structured_output(AssemblyManualOutput)
+    chain = prompt | structured_llm
+    
     try:
-        structured_llm = llm.with_structured_output(AssemblyManualOutput)
-        chain = prompt | structured_llm
-        result = chain.invoke({
-            "construction_plan": construction_plan,
-            "items_description": items_description,
-            "final_image_context": final_image_context,
-        })
-        assembly_prompts = result.steps
-        
-        # Post-process prompts to ensure explicit step references and action focus
-        processed_prompts = []
-        action_verbs = ["attaching", "connecting", "positioning", "securing", "inserting", "aligning", 
-                       "fastening", "placing", "mounting", "joining", "assembling", "installing"]
-        
-        for i, prompt in enumerate(assembly_prompts):
-            prompt_lower = prompt.lower()
-            
-            if i == 0:
-                # First step: ensure it describes an action, not just setup
-                if not any(verb in prompt_lower for verb in action_verbs):
-                    # Add action verb if missing
-                    if any(word in prompt_lower for word in ["position", "place", "set"]):
-                        processed_prompts.append(f"Positioning and placing {prompt}")
-                    else:
-                        processed_prompts.append(f"Positioning {prompt}")
-                else:
-                    processed_prompts.append(prompt)
-            else:
-                # Subsequent steps: ensure they reference previous step and show action
-                enhanced = prompt
-                
-                # Add continuity reference if missing
-                if not any(phrase in prompt_lower for phrase in ["continuing", "previous", "previous step", "from step", "building on"]):
-                    enhanced = f"Continuing from the previous step, {enhanced}"
-                
-                # Ensure action verb is present
-                if not any(verb in enhanced.lower() for verb in action_verbs):
-                    # Try to infer action from context or add generic action
-                    if "add" in enhanced.lower() or "new" in enhanced.lower():
-                        enhanced = enhanced.replace("add", "attaching").replace("adding", "attaching")
-                    else:
-                        enhanced = f"Attaching {enhanced}"
-                
-                processed_prompts.append(enhanced)
-        
-        assembly_prompts = processed_prompts
+        result = chain.invoke({})
+        # Convert pydantic objects to dicts for state storage
+        assembly_steps = [step.model_dump() for step in result.steps]
     except Exception as e:
-        # Fallback to non-structured output if structured output fails
-        print(f"⚠️  Structured output failed, falling back to text parsing: {e}")
-        chain = prompt | llm
-        response = chain.invoke({
-            "construction_plan": construction_plan,
-            "items_description": items_description,
-            "final_image_context": final_image_context,
-        })
-        
-        # Parse the response - it should be a JSON array of strings or numbered list
-        import json
-        import re
-        content = response.content.strip()
-        
-        # Try to extract JSON array
-        try:
-            # Remove markdown code blocks if present
-            if content.startswith("```"):
-                lines = content.split("\n")
-                content = "\n".join(lines[1:-1]) if len(lines) > 2 else content
-            if "```json" in content:
-                json_match = re.search(r'```json\s*(.*?)\s*```', content, re.DOTALL)
-                if json_match:
-                    content = json_match.group(1)
-            
-            assembly_prompts = json.loads(content)
-            if not isinstance(assembly_prompts, list):
-                assembly_prompts = [str(assembly_prompts)]
-        except json.JSONDecodeError:
-            # Fallback: try to extract numbered list items
-            lines = content.split("\n")
-            assembly_prompts = []
-            for line in lines:
-                line = line.strip()
-                # Match numbered items (1., 2., Step 1, etc.)
-                if re.match(r'^\d+[\.\)]', line) or re.match(r'^Step \d+', line, re.IGNORECASE):
-                    # Remove the number prefix
-                    prompt_text = re.sub(r'^\d+[\.\)]\s*', '', line)
-                    prompt_text = re.sub(r'^Step \d+[:\-]?\s*', '', prompt_text, flags=re.IGNORECASE)
-                    if prompt_text:
-                        assembly_prompts.append(prompt_text)
-            
-            if not assembly_prompts:
-                # Last resort: split by double newlines or use whole response
-                paragraphs = [p.strip() for p in content.split("\n\n") if p.strip()]
-                assembly_prompts = paragraphs if paragraphs else [content]
+        print(f"⚠️ Structured output failed: {e}")
+        assembly_steps = []
     
     return {
-        "assembly_manual_prompts": assembly_prompts,
+        "assembly_manual_prompts": assembly_steps,
     }
+
+
+def composite_layers(step_data: Dict[str, Any], layer_images: Dict[str, Image.Image]) -> str:
+    """
+    Stitches transparent/white-bg item images onto a white 16:9 canvas.
+    Returns base64 encoded image string.
+    """
+    # Canvas settings
+    CANVAS_WIDTH = 1024
+    CANVAS_HEIGHT = 576  # 16:9
+    canvas = Image.new('RGB', (CANVAS_WIDTH, CANVAS_HEIGHT), 'white')
+    draw = ImageDraw.Draw(canvas)
+    
+    # Load font
+    try:
+        # Try to load a standard font
+        font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 36)
+        small_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 24)
+    except:
+        font = ImageFont.load_default()
+        small_font = ImageFont.load_default()
+        
+    # Instruction text at top
+    instruction = step_data.get("instruction", "")
+    draw.text((20, 20), instruction, fill="black", font=font)
+    
+    layers = step_data.get("layers", [])
+    if not layers:
+        return ""
+
+    # Layout strategy: Horizontal row of groups
+    # Each group has: [Representative Image] + Text "Nx Name"
+    
+    num_groups = len(layers)
+    available_width = CANVAS_WIDTH
+    group_width = available_width // num_groups
+    
+    for i, layer in enumerate(layers):
+        item_name = layer.get("item_name", "Item")
+        quantity = layer.get("quantity", 1)
+        prompt = layer.get("layer_prompt", "")
+        
+        # Get the pre-generated image for this layer
+        layer_key = f"{item_name}_{prompt}"
+        img = layer_images.get(layer_key)
+        
+        if img:
+            # Resize image to fit in group slot (maintain aspect ratio)
+            # Max size: group_width - padding, height - padding
+            target_size = min(group_width - 40, 300)
+            img_ratio = img.width / img.height
+            
+            new_width = target_size
+            new_height = int(new_width / img_ratio)
+            
+            # Make white transparent (simple thresholding)
+            # Convert to RGBA
+            img = img.convert("RGBA")
+            datas = img.getdata()
+            new_data = []
+            for item in datas:
+                # If pixel is very light/white, make it transparent
+                if item[0] > 240 and item[1] > 240 and item[2] > 240:
+                    new_data.append((255, 255, 255, 0))
+                else:
+                    new_data.append(item)
+            img.putdata(new_data)
+            
+            img_resized = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
+            
+            # Calculate position
+            x_center = (i * group_width) + (group_width // 2)
+            y_center = CANVAS_HEIGHT // 2
+            
+            paste_x = x_center - (new_width // 2)
+            paste_y = y_center - (new_height // 2)
+            
+            # Paste with mask (for transparency)
+            canvas.paste(img_resized, (paste_x, paste_y), img_resized)
+            
+            # Draw label below
+            label = f"{quantity}x {item_name}"
+            bbox = draw.textbbox((0, 0), label, font=font)
+            text_width = bbox[2] - bbox[0]
+            draw.text((x_center - (text_width // 2), paste_y + new_height + 10), label, fill="black", font=font)
+            
+        else:
+            print(f"⚠️ Missing image for layer: {item_name}")
+            
+    # Convert to base64
+    buffered = BytesIO()
+    canvas.save(buffered, format="PNG")
+    img_str = base64.b64encode(buffered.getvalue()).decode()
+    return f"data:image/png;base64,{img_str}"
 
 
 @observe(name="assembly_manual_generator")
@@ -689,16 +741,16 @@ def node_assembly_manual_generator(state: AgentState) -> Dict[str, Any]:
     """
     Assembly Manual Generator Node
     
-    Receives assembly_manual_prompts and generates step-by-step images using FLUX 2.
-    Each prompt generates one image showing that step of the assembly process.
-    Uses consistent seed and enhanced prompts for better continuity.
-    Updates assembly_manual_images in state.
+    Receives assembly_manual_prompts (list of step dicts) and generates composite images.
+    1. Identifies all unique layers needed across steps.
+    2. Generates one sample image for each unique layer.
+    3. Composites them for each step using the Label + Sample strategy.
     """
     from app.services.flux_service import generate_image
     import hashlib
     
-    assembly_prompts = state.get("assembly_manual_prompts", [])
-    if not assembly_prompts:
+    assembly_steps = state.get("assembly_manual_prompts", [])
+    if not assembly_steps:
         return {
             "assembly_manual_images": [],
         }
@@ -706,76 +758,31 @@ def node_assembly_manual_generator(state: AgentState) -> Dict[str, Any]:
     # Material image URL (same as used for product image)
     material_image_url = state.get("material_image")
     
-    # Generate a consistent seed based on the construction plan for visual consistency
-    construction_plan = state.get("construction_plan", "")
-    seed_hash = int(hashlib.md5(construction_plan.encode()).hexdigest()[:8], 16) % (2**31)
-    base_seed = seed_hash  # Use same base seed for all steps
+    # 1. Identify unique layers to generate
+    # Key: "ItemName_Prompt", Value: Image.Image
+    unique_layer_prompts = {} 
     
-    # Get the final product image URL for visual consistency
-    final_image_url = state.get("final_image_url")
+    for step in assembly_steps:
+        layers = step.get("layers", [])
+        for layer in layers:
+            item_name = layer.get("item_name", "")
+            prompt = layer.get("layer_prompt", "")
+            key = f"{item_name}_{prompt}"
+            unique_layer_prompts[key] = prompt
+            
+    # 2. Generate images for unique layers
+    layer_images = {} # Key: "ItemName_Prompt", Value: PIL Image
     
-    assembly_images = []
-    previous_image_url = None
-    previous_step_description = None
+    print(f"📸 Generating {len(unique_layer_prompts)} unique components...")
     
-    # Generate images for each step
-    for i, step_prompt in enumerate(assembly_prompts):
-        print(f"📸 Generating assembly step {i+1}/{len(assembly_prompts)}...")
+    for key, prompt in unique_layer_prompts.items():
+        # Generate image
+        # Use simple hash for seed
+        seed = int(hashlib.md5(key.encode()).hexdigest()[:8], 16) % (2**31)
         
-        # Enhance the prompt with explicit continuity instructions and action focus
-        enhanced_prompt = step_prompt
-        
-        # Ensure action/movement is emphasized
-        action_keywords = ["attaching", "connecting", "positioning", "securing", "inserting", "aligning", 
-                          "fastening", "placing", "mounting", "joining", "hands", "tools", "movement"]
-        
-        # Check if prompt already emphasizes action
-        has_action_focus = any(keyword in step_prompt.lower() for keyword in action_keywords)
-        
-        if not has_action_focus:
-            # Add action emphasis
-            if "position" in step_prompt.lower() or "place" in step_prompt.lower():
-                enhanced_prompt = step_prompt.replace("position", "positioning").replace("place", "placing")
-            elif "connect" in step_prompt.lower() or "attach" in step_prompt.lower():
-                enhanced_prompt = step_prompt.replace("connect", "connecting").replace("attach", "attaching")
-            else:
-                # Add generic action context
-                enhanced_prompt = f"Performing assembly action: {step_prompt}"
-        
-        # Add reference to final product image for visual consistency
-        final_image_note = ""
-        if final_image_url:
-            if i == 0:
-                final_image_note = f" Match the visual style, materials, colors, lighting, and aesthetic of the final product image (reference available). The assembly should progressively build toward that exact final appearance."
-            else:
-                final_image_note = f" Continue building toward the final product appearance. Match the visual style, materials, colors, and lighting of the final product image (reference available)."
-        
-        # For steps after the first, add explicit continuity instructions
-        if i > 0 and previous_step_description:
-            # Ensure the prompt explicitly references maintaining the previous state
-            if "continuing from" not in enhanced_prompt.lower() and "previous step" not in enhanced_prompt.lower():
-                enhanced_prompt = f"Continuing from the previous assembly step, {enhanced_prompt.lower()}"
-            # Add consistency and action instructions
-            enhanced_prompt += " Maintain the exact same lighting, camera angle, and visual style as the previous step. Keep all previously assembled components in their exact positions. Show the assembly action in progress with hands or tools visible."
-        
-        # Add consistency and action instructions for all steps
-        if i == 0:
-            # First step: establish the visual style with action focus
-            enhanced_prompt += " Professional technical illustration showing assembly action in progress. Consistent lighting from the front-left, neutral background, clear focus on assembly components. Show hands positioning components or tools being used." + final_image_note
-        else:
-            # Subsequent steps: maintain consistency with action focus
-            enhanced_prompt += " Maintain identical lighting, perspective, and visual style as previous steps. Show the assembly action being performed with hands or tools visible. Only add new components without changing existing ones." + final_image_note
-        
-        # Use a consistent seed with slight variation per step for reproducibility
-        # Same base seed ensures similar style, slight variation prevents exact duplicates
-        step_seed = (base_seed + i) % (2**31)
-        
-        # For the first step, generate from materials
-        # For subsequent steps, use iterative editing with previous image
         image_url = generate_image(
-            prompt=enhanced_prompt,
+            prompt=prompt,
             material_image_url=material_image_url,
-            previous_image_url=previous_image_url,
             width=1024,
             height=1024,
             seed=step_seed,
@@ -783,15 +790,31 @@ def node_assembly_manual_generator(state: AgentState) -> Dict[str, Any]:
         )
         
         if image_url:
-            assembly_images.append(image_url)
-            previous_image_url = image_url  # Use this as the base for the next step
-            # Store a brief description of this step for next iteration
-            previous_step_description = step_prompt[:100]  # Store first 100 chars as reference
+            try:
+                response = requests.get(image_url)
+                img = Image.open(BytesIO(response.content))
+                layer_images[key] = img
+                print(f"✅ Downloaded layer image for: {key}")
+            except Exception as e:
+                print(f"❌ Failed to download/open image {image_url}: {e}")
         else:
-            print(f"⚠️  Failed to generate image for step {i+1}")
-            # Continue with other steps even if one fails
+             print(f"⚠️ Failed to generate image for layer: {key}")
+
+    # 3. Composite steps
+    assembly_images = []
     
+    for i, step in enumerate(assembly_steps):
+        print(f"🎨 Compositing step {i+1}/{len(assembly_steps)}...")
+        try:
+            composite_b64 = composite_layers(step, layer_images)
+            assembly_images.append(composite_b64)
+        except Exception as e:
+            print(f"❌ Composition failed for step {i+1}: {e}")
+            import traceback
+            traceback.print_exc()
+            # Add placeholder or error
+            assembly_images.append("")
+
     return {
         "assembly_manual_images": assembly_images,
     }
-

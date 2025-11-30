@@ -6,9 +6,8 @@ from typing import List, Optional, Dict, Any
 class BuildRequest(BaseModel):
     """Request schema for the /build endpoint."""
     user_query: str = Field(
-        ...,
-        description="The user's vague idea or request (e.g., 'Cyberpunk Throne')",
-        min_length=1,
+        "",
+        description="The user's vague idea or request (e.g., 'Cyberpunk Throne'). Can be empty if skip_conversation is True.",
         max_length=500,
     )
     previous_style_description: Optional[str] = Field(
@@ -56,7 +55,7 @@ class BuildResponse(BaseModel):
     )
     flux_prompt: Optional[str] = Field(None, description="The optimized FLUX prompt")
     final_image_url: Optional[str] = Field(None, description="URL of the generated image")
-    assembly_manual_prompts: List[str] = Field(
+    assembly_manual_prompts: List[Any] = Field(
         default_factory=list,
         description="List of prompts for each assembly step"
     )
@@ -117,7 +116,7 @@ class GenerateAssemblyManualRequest(BaseModel):
 class GenerateAssemblyManualResponse(BaseModel):
     """Response schema for the /generate-assembly-manual endpoint."""
     success: bool = Field(..., description="Whether the assembly manual generation was successful")
-    assembly_manual_prompts: List[str] = Field(
+    assembly_manual_prompts: List[Any] = Field(
         default_factory=list,
         description="List of prompts for each assembly step"
     )
