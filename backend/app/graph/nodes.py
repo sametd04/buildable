@@ -95,13 +95,13 @@ def node_planner(state: AgentState) -> Dict[str, Any]:
     prompt_variables = {
         "style_description": style_description,
         "user_query": user_query,
-        "previous_plan": construction_plan,
-        "clerk_feedback": clerk_feedback,
     }
-    
+
     rendered_prompt = ""
     if clerk_feedback:
         # Previous attempt failed - need to revise with alternative materials
+        prompt_variables["clerk_feedback"] = clerk_feedback
+        prompt_variables["previous_plan"] = construction_plan or ""
         rendered_prompt = load_prompt(
         prompt_name="planner_with_clerk_feedback", 
         variables=prompt_variables
@@ -278,7 +278,7 @@ If they are poor matches or key parts are missing, set is_successful=False and d
         #)
     #else:
         # Clear any previous feedback on success
-        #return_state["clerk_feedback"] = None
+    return_state["clerk_feedback"] = None
     
     return return_state
 
