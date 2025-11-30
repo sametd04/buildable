@@ -16,6 +16,9 @@ class Settings(BaseSettings):
     anthropic_api_key: Optional[str] = None
     llm_provider: str = "openai"  # "openai" or "anthropic"
     llm_model: str = "gpt-4o-mini"  # Default model
+
+    # Embedding Model
+    embedding_model: str = "text-embedding-3-small"  # OpenAI embedding model
     
     # FLUX API Configuration (Black Forest Labs)
     bfl_api_key: Optional[str] = None

@@ -17,7 +17,10 @@ def get_inventory_retriever():
         raise ValueError("OPENAI_API_KEY not set. Required for vector search.")
     
     # Initialize embeddings (must match the embeddings used during seeding)
-    embeddings = OpenAIEmbeddings(api_key=settings.openai_api_key)
+    embeddings = OpenAIEmbeddings(
+        api_key=settings.openai_api_key,
+        model=settings.embedding_model,
+    )
     
     # Get database connection
     db = get_database()

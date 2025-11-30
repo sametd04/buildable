@@ -42,9 +42,88 @@
     "description": "U-shaped table leg set (Prod. Nr. 27197770) made of black powder-coated steel. Dimensions: 800 mm W x 723 mm H. Net weight: 19.2 kg (set of 2). Designed for table tops 80–90 cm wide. Price: 265.00 € per unit (incl. VAT)."
   },
 
+  {
+    "id": "Wood-Green-004",
+    "name": "Impregnated Wooden Batten (200x4.8x2.4 cm)",
+    "category": "Lumber/Construction Wood",
+    "src": "https://media.cdn.bauhaus/m/488991/prod_large_square.webp?width=1920&quality=75",
+    "description": "Impregnated batten (Prod. Nr. 14431194) made of Spruce/Fir (Fichte/Tanne) with sharp edges. Dimensions: 200 cm length x 4.8 cm width x 2.4 cm thickness. Suitable for roof and interior construction, and general sub-constructions. Price: 2.00 € per piece (incl. VAT).",
+    "material": "Spruce/Fir (Impregnated)"
+  },
+  {
+    "id": "Spruce_untreated_005",
+    "name": "Construction Plank (Baudiele)",
+    "category": "Lumber/Planks & Boards",
+    "src": "https://media.cdn.bauhaus/m/524778/prod_large_square.webp?width=1920&quality=75",
+    "description": "Robust, untreated plank (Prod. Nr. 14416274) made of Spruce (Fichte) with sharp edges and a rough-sawn surface. Dimensions: 300 cm length x 20 cm width x 4 cm thickness. Ideal for temporary walkways on construction sites and scaffolding. Price: 16.95 € per piece (incl. VAT).",
+    "material": "Spruce (Untreated)"
+  },
+  {
+    "id": "BAUHAUS-oak-006",
+    "name": "Oak Blockware (Block Board)",
+    "category": "Lumber/Furniture Wood",
+    "src": "https://media.cdn.bauhaus/m/237845/prod_large_square.webp?width=1920&quality=75",
+    "description": "Untreated Oak Blockware (Prod. Nr. 26087559) in B/C quality, technically dried and sanded. Dimensions: 120 cm length x 2.6 cm thickness, with a variable width of 26 cm - 30 cm. Suitable for indoor and outdoor furniture construction. Edges may contain bark. Price: 29.95 € per piece (incl. VAT).",
+    "material": "Oak (Untreated)"
+  },
+  {
+    "id": "BAUHAUS-teak-007",
+    "name": "Teak Tree Slice (Baumscheibe)",
+    "category": "Decoration/Wood Slices",
+    "src": "https://media.cdn.bauhaus/m/252327/prod_large_square.webp?width=1920&quality=75",
+    "description": "Unique, untreated Teak wood slice (Prod. Nr. 25026762) from a solid tree trunk. Suitable for indoor decoration. Natural characteristics include visible grain and intended cracks from the drying process. Approximate dimensions: 1 cm - 35 cm diameter x 1.8 cm thickness. Price: 19.95 € per piece (incl. VAT).",
+    "material": "Teak (Untreated)"
+  },
+  {
+    "id": "BAUHAUS-Pine-Untreated-008",
+    "name": "Astigarraga Round Table Top",
+    "category": "Furniture Building/Table Tops",
+    "src": "https://media.cdn.bauhaus/m/1235068/prod_large_square.webp?width=1920&quality=75",
+    "description": "Round table top (Prod. Nr. 29221532) made of untreated solid Pine (Kiefer). Robust and durable with a thickness of 3.5 cm. The surface is unvarnished and can be painted, stained, or left natural. Dimensions: 75 cm diameter x 3.5 cm thickness. Price: 59.00 € per piece (incl. VAT).",
+    "material": "Pine (Untreated)"
+  },
+  {
+    "id": "BAUHAUS-Hose-Sprinkler-009",
+    "name": "Gardena Hose Sprinkler",
+    "category": "Garden/Irrigation Equipment",
+    "src": "https://media.cdn.bauhaus/m/501272/prod_large_square.webp?width=1920&quality=75",
+    "description": "Green, 15m long hose sprinkler (Prod. Nr. 16168166) made of plastic. Provides an optimal fine spray for watering flower beds, borders, and narrow zones. It is supplied ready for connection and can be extended up to 22.5 m or cut to custom lengths. Manufacturer offers a 10-year warranty. Price: 29.79 € per piece (incl. VAT).",
+    "material": "Plastic"
+  },
+  {
+    "id": "Steel-Black-Bogen-010",
+    "name": "Furniture Foot 'Strong' (35 cm)",
+    "category": "Furniture Hardware/Table Legs",
+    "src": "https://media.cdn.bauhaus/m/297985-2/prod_large_square.webp?width=1920&quality=75",
+    "description": "Black, rectangular steel furniture foot (Prod. Nr. 26852535) in industrial design. Suitable for side or coffee tables. Maximum load capacity is 250 kg. Dimensions: 4 cm length x 25 cm width x 35 cm height. Installation via screws. Price: 18.95 € per piece (incl. VAT).",
+    "material": "Steel (Black, Matt)"
+  },
+  {
+    "id": "Steel-White-Bogen-011",
+    "name": "Furniture Foot 'Strong' (35 cm)",
+    "category": "Furniture Hardware/Table Legs",
+    "src": "https://media.cdn.bauhaus/m/744467-2/prod_large_square.webp?width=1920&quality=75",
+    "description": "White, rectangular steel furniture foot (Prod. Nr. 28459163) in industrial design. Suitable for side or coffee tables. Maximum load capacity is 250 kg. Dimensions: 4 cm length x 25 cm width x 35 cm height. Installation via screws. Price: 18.95 € per piece (incl. VAT).",
+    "material": "Steel (White, Matt)"
+  },
+  {
+    "id": "B",
+    "name": "Oak Table Top with Live Edge",
+    "category": "Furniture Building/Table Tops",
+    "src": "https://media.cdn.bauhaus/m/566825-1/prod_large_square.webp?width=1920&quality=75",
+    "description": "Massive Oak table top (Prod. Nr. 27156780) with a natural, irregular live edge (Waldkante). Features continuous staves, a rustic appearance due to knots and filled imperfections, and a clear, food-safe oiled finish. Dimensions: 200 cm length x 80 cm width x 2.6 cm thickness. Suitable for indoor furniture projects. Price: 225.00 € per piece (incl. VAT).",
+    "material": "Oak (Oiled)"
+  },
+  {
+    "id": "BAUHAUS-31958710",
+    "name": "CITYLINE Spider Table Leg",
+    "category": "Furniture Hardware/Table Legs",
+    "src": "https://media.cdn.bauhaus/m/2743135-2/prod_large_square.webp?width=1920&quality=75",
+    "description": "Black, powder-coated steel spider-style table leg (Prod. Nr. 31958710) in an industrial design. Includes mounting plate, adjustable glides, and assembly hardware. Dimensions: 140 cm length x 70 cm width x 72 cm height. Ideal for dining or office tables with a table top width between 70 cm and 90 cm. Price: 165.00 € per piece (incl. VAT).",
+    "material": "Steel (Powder-coated)"
+  },
 
 
-  
   {
     "id": "SS-SCREW-2.9X13",
     "name": "Marinetech Sheet Metal Screw",

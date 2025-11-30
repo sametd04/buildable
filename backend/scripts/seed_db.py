@@ -42,7 +42,7 @@ def seed_database():
         sys.exit(1)
     
     print("Initializing OpenAI embeddings...")
-    embeddings = OpenAIEmbeddings(api_key=settings.openai_api_key)
+    embeddings = OpenAIEmbeddings(api_key=settings.openai_api_key,model=settings.embedding_model)
     
     # Connect to MongoDB
     print(f"Connecting to MongoDB at {settings.mongo_uri}...")
