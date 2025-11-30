@@ -13,6 +13,53 @@ import traceback
 router = APIRouter(prefix="/api/v1", tags=["build"])
 
 
+@router.get("/inventory")
+async def get_all_inventory():
+    """
+    GET /inventory endpoint.
+    
+    Returns all inventory items from MongoDB.
+    """
+    try:
+        items = get_inventory()
+        return {"success": True, "items": items}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch inventory: {str(e)}")
+
+
+@router.delete("/inventory/{item_id}")
+async def delete_inventory_item(item_id: str):
+    """
+    DELETE /inventory/{item_id} endpoint.
+    
+    Deletes an inventory item from MongoDB.
+    """
+    try:
+        from app.core.database import get_database
+        db = get_database()
+        collection = db.inventory
+        
+        # Try to delete by 'id' field first
+        result = collection.delete_one({"id": item_id})
+        
+        # If not found, try by _id (ObjectId)
+        if result.deleted_count == 0:
+            from bson import ObjectId
+            try:
+                result = collection.delete_one({"_id": ObjectId(item_id)})
+            except Exception:
+                pass
+        
+        if result.deleted_count > 0:
+            return {"success": True, "message": f"Item {item_id} deleted successfully"}
+        else:
+            raise HTTPException(status_code=404, detail=f"Item {item_id} not found")
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to delete item: {str(e)}")
+
+
 @router.post("/build", response_model=BuildResponse)
 @observe(name="build_endpoint")
 async def build(request: BuildRequest) -> BuildResponse:
@@ -26,7 +73,7 @@ async def build(request: BuildRequest) -> BuildResponse:
         # Initialize state (no need to load inventory into memory)
         initial_state: AgentState = {
             "user_query": request.user_query,
-            "style_description": "",  # Will be set by style_optimizer node
+            "style_description": request.previous_style_description or "",  # Use previous or empty
             "construction_plan": None,
             "selected_item_ids": [],
             "flux_prompt": None,
@@ -97,6 +144,7 @@ async def build(request: BuildRequest) -> BuildResponse:
         return BuildResponse(
             success=True,
             user_query=final_state["user_query"],
+            style_description=final_state.get("style_description"),
             construction_plan=final_state.get("construction_plan"),
             selected_item_ids=final_state.get("selected_item_ids", []),
             selected_items=selected_items,

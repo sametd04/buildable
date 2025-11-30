@@ -28,7 +28,7 @@ def get_database() -> Database:
         return _database
     
     try:
-        _client = MongoClient(settings.mongo_uri)
+        _client = MongoClient(settings.mongo_uri, tlsAllowInvalidCertificates=True)
         _database = _client[settings.mongo_db_name]
         # Test the connection
         _client.admin.command('ping')

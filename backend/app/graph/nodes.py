@@ -36,26 +36,48 @@ def node_style_optimizer(state: AgentState) -> Dict[str, Any]:
     """
     llm = get_llm()
     
+    # Check if we have previous style description (for iterative edits)
+    previous_style = state.get("style_description", "")
+    
     # Get user query
     user_query = state.get("user_query")
     
-    prompt_variables = {
-        "user_query": user_query,
-    }
+    if previous_style:
+        # Iterative edit - modify existing description
+        prompt = ChatPromptTemplate.from_messages([
+            ("system", """You are an expert Design Consultant. You are modifying an existing design based on new user feedback.
+            
+Previous design description:
+{previous_style}
 
-    # Load your markdown template
-    rendered_prompt = load_prompt(
-        prompt_name="optimize_user_query", 
-        variables=prompt_variables
-    )
+User's new request: {user_query}
 
-    if not rendered_prompt:
-        raise ValueError("Failed to load 'optimize_user_query.md' or template is empty")
+Update the design description to incorporate the user's changes while maintaining the overall vision.
+Focus on what changed (mood, texture, color, lighting, etc.)."""),
+            ("human", "Update the design description based on my request."),
+        ])
+        
+        response = llm.invoke(prompt.format_messages(
+            previous_style=previous_style,
+            user_query=state["user_query"]
+        ))
+    else:
+        # Get user query
+        user_query = state.get("user_query")
+        
+        prompt_variables = {
+            "user_query": user_query,
+        }
 
-    prompt = ChatPromptTemplate.from_messages([
-        ("system", rendered_prompt),
-    ])
-    
+        # Load your markdown template
+        rendered_prompt = load_prompt(
+            prompt_name="optimize_user_query", 
+            variables=prompt_variables
+        )
+
+        if not rendered_prompt:
+            raise ValueError("Failed to load 'optimize_user_query.md' or template is empty")
+        
     chain = prompt | llm
     response = chain.invoke({
         "user_query": state["user_query"],
@@ -337,7 +359,14 @@ def node_flux_generator(state: AgentState) -> Dict[str, Any]:
     """
     from app.services.flux_service import generate_image
     
-    image_url = generate_image(state["flux_prompt"], "https://www.thecontractchair.co.uk/media/re_branding/ck_uploads/from_tiny_editor/ash-wood-table-top%20(3).webp", )
+    # Use previous image if available (for image-to-image editing)
+    previous_image = state.get("final_image_url")
+    
+    image_url = generate_image(
+        prompt=state["flux_prompt"],
+        material_image_url="https://www.thecontractchair.co.uk/media/re_branding/ck_uploads/from_tiny_editor/ash-wood-table-top%20(3).webp",
+        previous_image_url=previous_image,
+    )
     
     return {
         "final_image_url": image_url,

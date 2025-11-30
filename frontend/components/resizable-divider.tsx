@@ -10,10 +10,12 @@ export function ResizableDivider({ onResize }: ResizableDividerProps) {
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault()
     const startY = e.clientY
+    let lastY = startY
 
     const handleMouseMove = (moveEvent: MouseEvent) => {
-      const delta = moveEvent.clientY - startY
-      onResize(delta * 0.25)
+      const delta = moveEvent.clientY - lastY
+      lastY = moveEvent.clientY
+      onResize(delta)
     }
 
     const handleMouseUp = () => {

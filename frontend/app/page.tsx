@@ -5,6 +5,7 @@ import { Warehouse } from "@/components/warehouse"
 import { AssemblyWorkbench } from "@/components/assembly-workbench"
 import { AgentCommandCenter } from "@/components/agent-command-center"
 import { ResizableDivider } from "@/components/resizable-divider"
+import { ThemeToggle } from "@/components/theme-toggle"
 import { buildProject, type BuildResponse, type InventoryItem } from "@/lib/api"
 
 export default function BuildableDashboard() {
@@ -16,9 +17,11 @@ export default function BuildableDashboard() {
   const [isThinking, setIsThinking] = useState(false)
   const [generatedImage, setGeneratedImage] = useState<string | null>(null)
   const [constructionPlan, setConstructionPlan] = useState<string | null>(null)
-  const [assemblyManualImages, setAssemblyManualImages] = useState<string[]>([])
-  const scrollRef = useRef<HTMLDivElement>(null)
-  const [assemblyHeight, setAssemblyHeight] = useState(60) // percentage
+  const [styleDescription, setStyleDescription] = useState<string | null>(null)
+  const [imageHistory, setImageHistory] = useState<string[]>([])
+  const [selectedParentIndices, setSelectedParentIndices] = useState<number[]>([])
+  const scrollRef = useRef<HTMLDivElement | null>(null)
+  const [assemblyHeight, setAssemblyHeight] = useState(70) // percentage
 
   const handleSelectItem = (itemId: string) => {
     setSelectedItems((prev) => (prev.includes(itemId) ? prev.filter((id) => id !== itemId) : [...prev, itemId]))
@@ -57,8 +60,12 @@ export default function BuildableDashboard() {
     ])
 
     try {
-      // Call backend API
-      const response: BuildResponse = await buildProject({ user_query: prompt })
+      // Call backend API with previous context
+      const response: BuildResponse = await buildProject({ 
+        user_query: prompt,
+        previous_style_description: styleDescription || undefined,
+        previous_image_url: generatedImage || undefined,
+      })
 
       // Update messages
       setAgentMessages((prev) => {
@@ -89,11 +96,16 @@ export default function BuildableDashboard() {
 
       if (response.success) {
         // Update state with results
+        setStyleDescription(response.style_description || null)
         setConstructionPlan(response.construction_plan || null)
         setSelectedItems(response.selected_item_ids)
         setSelectedItemsData(response.selected_items)
-        setGeneratedImage(response.final_image_url || null)
-        setAssemblyManualImages(response.assembly_manual_images || [])
+        
+        // Add new image to history and set as current
+        if (response.final_image_url) {
+          setImageHistory((prev) => [...prev, response.final_image_url!])
+          setGeneratedImage(response.final_image_url)
+        }
 
         // Add success message
         setAgentMessages((prev) => [
@@ -162,7 +174,8 @@ export default function BuildableDashboard() {
 
   return (
     <div className="h-screen w-full bg-background text-foreground flex overflow-hidden">
-      <div className="w-1/4 border-r border-border bg-card flex flex-col">
+      <ThemeToggle />
+      <div className="w-[30%] border-r border-border bg-card flex flex-col">
         <AgentCommandCenter
           messages={agentMessages}
           onBuild={handleBuild}
@@ -180,6 +193,10 @@ export default function BuildableDashboard() {
             constructionPlan={constructionPlan}
             assemblyManualImages={assemblyManualImages}
             onRegenerate={() => setGeneratedImage(null)}
+            imageHistory={imageHistory}
+            onSelectHistoryImage={(imageUrl) => setGeneratedImage(imageUrl)}
+            selectedParents={selectedParentIndices}
+            onParentSelect={setSelectedParentIndices}
           />
         </div>
 

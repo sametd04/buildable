@@ -6,6 +6,8 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/a
 
 export interface BuildRequest {
   user_query: string
+  previous_style_description?: string
+  previous_image_url?: string
 }
 
 export interface InventoryItem {
@@ -19,6 +21,7 @@ export interface InventoryItem {
 export interface BuildResponse {
   success: boolean
   user_query: string
+  style_description?: string
   construction_plan?: string
   selected_item_ids: string[]
   selected_items: InventoryItem[]
