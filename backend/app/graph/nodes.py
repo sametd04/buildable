@@ -25,12 +25,140 @@ def get_llm():
     return llm
 
 
+@observe(name="conversation_agent")
+def node_conversation_agent(state: AgentState) -> Dict[str, Any]:
+    """
+    Conversation Agent Node using Slot-Filling pattern.
+    
+    Uses ChatOpenAI with RequiredData bound as a tool.
+    Asks follow-up questions until it can populate the tool.
+    """
+    from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
+    from pydantic import BaseModel, Field
+    
+    # Define the required data schema
+    class RequiredData(BaseModel):
+        """Schema for the information that must be gathered before proceeding to workflow."""
+        use_case: str = Field(description="What the item will be used for (e.g., workspace, storage, decoration)")
+        dimensions: str = Field(description="Approximate size requirements or constraints (e.g., 'fits in a corner', 'desk height')")
+        style_preferences: str = Field(description="Aesthetic style, mood, colors, textures (e.g., industrial, minimalist, rustic, modern)")
+        material_preferences: str = Field(default="", description="Any specific material preferences or constraints. Leave empty if no preference.")
+        personalization: str = Field(default="", description="Any personal touches or specific requirements. Leave empty if none.")
+        constraints: str = Field(default="", description="Any space, budget, or functional constraints. Leave empty if none.")
+    
+    llm = get_llm()
+    
+    # Get conversation history and state
+    conversation_history = state.get("conversation_history", [])
+    user_query = state.get("user_query", "")
+    skip_conversation = state.get("skip_conversation", False)
+    
+    # If user wants to skip, proceed immediately
+    if skip_conversation:
+        return {
+            "ready_for_workflow": True,
+            "status": "processing",
+        }
+    
+    # Convert conversation_history to LangChain messages
+    messages = []
+    if len(conversation_history) == 0:
+        # First message - add system prompt
+        system_prompt = f"""You are a friendly and helpful design consultant helping users create custom DIY furniture and structures.
+
+Your goal is to have a natural conversation to gather the following information:
+1. **Use Case & Purpose**: What will this be used for? (e.g., workspace, storage, decoration)
+2. **Dimensions & Size**: Approximate size requirements (e.g., "fits in a corner", "desk height", "shelf width")
+3. **Style Preferences**: Aesthetic style, mood, colors, textures (e.g., industrial, minimalist, rustic, modern)
+4. **Material Preferences**: Any specific material preferences or constraints (e.g., wood type, metal finish) - optional
+5. **Personalization**: Any personal touches or specific requirements (e.g., "needs to match my existing furniture") - optional
+6. **Constraints**: Any space, budget, or functional constraints - optional
+
+Keep the conversation natural and friendly. Ask 1-2 questions at a time. Don't be overwhelming.
+
+IMPORTANT: Once you have gathered enough information to fill in the required fields (use_case, dimensions, style_preferences), you should call the RequiredData tool with the information you've collected. The material_preferences, personalization, and constraints fields are optional and can be left empty if not mentioned.
+
+User's initial request: {user_query}
+
+Start the conversation by asking 1-2 clarifying questions to better understand their needs."""
+        messages.append(SystemMessage(content=system_prompt))
+        messages.append(HumanMessage(content=user_query))
+    else:
+        # Convert existing conversation history to LangChain messages
+        for msg in conversation_history:
+            role = msg.get("role", "user")
+            content = msg.get("content", "")
+            if role == "user":
+                messages.append(HumanMessage(content=content))
+            elif role == "assistant":
+                messages.append(AIMessage(content=content))
+    
+    # Bind the RequiredData as a tool and get response
+    llm_with_tool = llm.bind_tools([RequiredData])
+    
+    # Check if we should stream (this will be set by the caller)
+    stream = state.get("_stream", False)
+    
+    if stream:
+        # For streaming, we'll collect chunks and return them
+        # The actual streaming happens in the API endpoint
+        response = llm_with_tool.invoke(messages)
+    else:
+        response = llm_with_tool.invoke(messages)
+    
+    # Convert response back to conversation_history format
+    if hasattr(response, "content"):
+        conversation_history.append({
+            "role": "assistant",
+            "content": response.content,
+        })
+    
+    # Check if the response contains a tool call for RequiredData
+    has_tool_call = False
+    conversation_data = {}
+    
+    if hasattr(response, "tool_calls") and response.tool_calls:
+        for tool_call in response.tool_calls:
+            if tool_call.get("name") == "RequiredData" or "RequiredData" in str(tool_call):
+                has_tool_call = True
+                args = tool_call.get("args", {})
+                conversation_data = {
+                    "use_case": args.get("use_case", ""),
+                    "dimensions": args.get("dimensions", ""),
+                    "style_preferences": args.get("style_preferences", ""),
+                    "material_preferences": args.get("material_preferences", ""),
+                    "personalization": args.get("personalization", ""),
+                    "constraints": args.get("constraints", ""),
+                }
+                # Add confirmation message
+                conversation_history.append({
+                    "role": "assistant",
+                    "content": "Great! I have enough information to create your design. Let me proceed with generating it...",
+                })
+                break
+    
+    if has_tool_call:
+        return {
+            "conversation_history": conversation_history,
+            "conversation_data": conversation_data,
+            "ready_for_workflow": True,
+            "status": "processing",
+        }
+    else:
+        return {
+            "conversation_history": conversation_history,
+            "conversation_data": state.get("conversation_data", {}),
+            "ready_for_workflow": False,
+            "status": "conversation",
+        }
+
+
 @observe(name="style_optimizer")
 def node_style_optimizer(state: AgentState) -> Dict[str, Any]:
     """
     Node 0: Style Optimizer
     
-    Takes the raw user_query and expands it into a detailed visual/aesthetic description.
+    Takes the raw user_query and conversation data to expand into a detailed visual/aesthetic description.
     Focuses on mood, texture, lighting, and overall vibe without listing specific parts.
     Updates style_description in state.
     """
@@ -39,8 +167,29 @@ def node_style_optimizer(state: AgentState) -> Dict[str, Any]:
     # Check if we have previous style description (for iterative edits)
     previous_style = state.get("style_description", "")
     
-    # Get user query
+    # Get user query and conversation data
     user_query = state.get("user_query")
+    conversation_data = state.get("conversation_data", {})
+    
+    # Build enhanced query with conversation data
+    enhanced_query = user_query
+    if conversation_data:
+        context_parts = []
+        if conversation_data.get("use_case"):
+            context_parts.append(f"Use case: {conversation_data['use_case']}")
+        if conversation_data.get("dimensions"):
+            context_parts.append(f"Dimensions: {conversation_data['dimensions']}")
+        if conversation_data.get("style_preferences"):
+            context_parts.append(f"Style preferences: {conversation_data['style_preferences']}")
+        if conversation_data.get("material_preferences"):
+            context_parts.append(f"Material preferences: {conversation_data['material_preferences']}")
+        if conversation_data.get("personalization"):
+            context_parts.append(f"Personalization: {conversation_data['personalization']}")
+        if conversation_data.get("constraints"):
+            context_parts.append(f"Constraints: {conversation_data['constraints']}")
+        
+        if context_parts:
+            enhanced_query = f"{user_query}\n\nAdditional context from conversation:\n" + "\n".join(context_parts)
     
     if previous_style:
         # Iterative edit - modify existing description
@@ -59,14 +208,11 @@ Focus on what changed (mood, texture, color, lighting, etc.)."""),
         
         response = llm.invoke(prompt.format_messages(
             previous_style=previous_style,
-            user_query=state["user_query"]
+            user_query=enhanced_query
         ))
     else:
-        # Get user query
-        user_query = state.get("user_query")
-        
         prompt_variables = {
-            "user_query": user_query,
+            "user_query": enhanced_query,
         }
 
         # Load your markdown template

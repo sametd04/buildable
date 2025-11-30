@@ -19,12 +19,34 @@ class BuildRequest(BaseModel):
         None,
         description="Previous generated image URL (for image-to-image editing)",
     )
+    conversation_history: Optional[List[Dict[str, Any]]] = Field(
+        None,
+        description="Previous conversation history for continuing the conversation",
+    )
+    conversation_data: Optional[Dict[str, Any]] = Field(
+        None,
+        description="Previously gathered conversation data",
+    )
+    skip_conversation: bool = Field(
+        False,
+        description="Whether to skip the conversation and proceed directly to workflow",
+    )
 
 
 class BuildResponse(BaseModel):
     """Response schema for the /build endpoint."""
     success: bool = Field(..., description="Whether the build was successful")
     user_query: str = Field(..., description="The original user query")
+    status: str = Field(..., description="Current status: 'conversation', 'processing', 'success', 'failed_no_parts'")
+    conversation_history: List[Dict[str, Any]] = Field(
+        default_factory=list,
+        description="Conversation history between user and agent"
+    )
+    conversation_data: Dict[str, Any] = Field(
+        default_factory=dict,
+        description="Gathered information from conversation"
+    )
+    ready_for_workflow: bool = Field(False, description="Whether enough information has been gathered to proceed")
     style_description: Optional[str] = Field(None, description="The generated style description")
     construction_plan: Optional[str] = Field(None, description="The generated construction plan")
     selected_item_ids: List[str] = Field(default_factory=list, description="IDs of selected inventory items")

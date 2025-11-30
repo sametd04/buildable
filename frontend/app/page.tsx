@@ -6,7 +6,14 @@ import { AssemblyWorkbench } from "@/components/assembly-workbench"
 import { AgentCommandCenter } from "@/components/agent-command-center"
 import { ResizableDivider } from "@/components/resizable-divider"
 import { ThemeToggle } from "@/components/theme-toggle"
-import { buildProject, generateAssemblyManual, type BuildResponse, type InventoryItem, type GenerateAssemblyManualResponse } from "@/lib/api"
+import { buildProject, streamBuildProject, generateAssemblyManual, type BuildResponse, type InventoryItem, type GenerateAssemblyManualResponse } from "@/lib/api"
+
+// Generate unique IDs for messages
+let messageIdCounter = 0
+function generateMessageId(): string {
+  messageIdCounter++
+  return `${Date.now()}-${messageIdCounter}-${Math.random().toString(36).substr(2, 9)}`
+}
 
 export default function BuildableDashboard() {
   const [selectedItems, setSelectedItems] = useState<string[]>([])
@@ -25,122 +32,284 @@ export default function BuildableDashboard() {
   const [assemblyManualImages, setAssemblyManualImages] = useState<string[]>([])
   const [assemblyManualPrompts, setAssemblyManualPrompts] = useState<string[]>([])
   const [isGeneratingManual, setIsGeneratingManual] = useState(false)
+  const [conversationHistory, setConversationHistory] = useState<Array<{ role: string; content: string }>>([])
+  const [conversationData, setConversationData] = useState<Record<string, any>>({})
+  const [isInConversation, setIsInConversation] = useState(false)
 
   const handleSelectItem = (itemId: string) => {
     setSelectedItems((prev) => (prev.includes(itemId) ? prev.filter((id) => id !== itemId) : [...prev, itemId]))
   }
 
-  const handleBuild = async (prompt: string) => {
-    // Add user message
+  const handleBuild = async (prompt: string, skipConversation: boolean = false) => {
+    // Add user message to conversation
+    const newUserMessage = { role: "user", content: prompt }
+    const updatedHistory = [...conversationHistory, newUserMessage]
+    setConversationHistory(updatedHistory)
+
+    // Add user message to agent messages
+    const userMessageId = generateMessageId()
     setAgentMessages((prev) => [
       ...prev,
       {
-        id: Date.now().toString(),
+        id: userMessageId,
         type: "user",
         content: prompt,
       },
     ])
 
-    // Show thinking state
     setIsThinking(true)
 
     // Add initial agent message
-    const thinkingMessageId = (Date.now() + 1).toString()
-    setAgentMessages((prev) => [
-      ...prev,
-      {
-        id: thinkingMessageId,
-        type: "agent",
-        content: "Processing your request...",
-        steps: [
-          "Style Optimizer: Expanding design vision...",
-          "Planner: Creating construction plan...",
-          "Inventory Clerk: Searching for materials...",
-          "Prompt Engineer: Optimizing image prompt...",
-          "Flux Generator: Rendering image...",
-        ],
-      },
-    ])
+    const thinkingMessageId = generateMessageId()
+
+    // Only show workflow steps if we're explicitly skipping conversation
+    // Otherwise, we're in conversation mode and should show a simple thinking message
+    if (skipConversation) {
+      setAgentMessages((prev) => [
+        ...prev,
+        {
+          id: thinkingMessageId,
+          type: "agent",
+          content: "Processing your request...",
+          steps: [
+            "Style Optimizer: Expanding design vision...",
+            "Planner: Creating construction plan...",
+            "Inventory Clerk: Searching for materials...",
+            "Prompt Engineer: Optimizing image prompt...",
+            "Flux Generator: Rendering image...",
+          ],
+        },
+      ])
+    } else {
+      // During conversation, create an empty message that we'll stream into
+      setAgentMessages((prev) => [
+        ...prev,
+        {
+          id: thinkingMessageId,
+          type: "agent",
+          content: "",
+        },
+      ])
+    }
 
     try {
-      // Call backend API with previous context
-      const response: BuildResponse = await buildProject({
-        user_query: prompt,
-        previous_style_description: styleDescription || undefined,
-        previous_image_url: generatedImage || undefined,
-      })
+      // If skipping conversation, use regular endpoint
+      if (skipConversation) {
+        const response: BuildResponse = await buildProject({
+          user_query: prompt,
+          previous_style_description: styleDescription || undefined,
+          previous_image_url: generatedImage || undefined,
+          conversation_history: updatedHistory,
+          conversation_data: conversationData,
+          skip_conversation: skipConversation,
+        })
 
-      // Update messages
-      setAgentMessages((prev) => {
-        const updated = prev.map((msg) =>
-          msg.id === thinkingMessageId
-            ? {
-              ...msg,
-              content: response.success
-                ? "Build completed successfully!"
-                : "Build failed - see details below",
-              steps: response.success
-                ? [
-                  "✓ Style description generated",
-                  "✓ Construction plan created",
-                  `✓ ${response.selected_item_ids.length} materials selected`,
-                  "✓ Image prompt optimized",
-                  response.final_image_url ? "✓ Image generated" : "⏳ Image generation in progress",
-                  response.assembly_manual_images && response.assembly_manual_images.length > 0
-                    ? `✓ Assembly manual generated (${response.assembly_manual_images.length} steps)`
-                    : "⏳ Generating assembly manual...",
-                ]
-                : [`✗ Error: ${response.error || "Unknown error"}`],
-            }
-            : msg,
-        )
-        return updated
-      })
-
-      if (response.success) {
-        // Update state with results
-        setStyleDescription(response.style_description || null)
-        setConstructionPlan(response.construction_plan || null)
-        setSelectedItems(response.selected_item_ids)
-        setSelectedItemsData(response.selected_items)
-
-        // Add new image to history and set as current
-        if (response.final_image_url) {
-          setImageHistory((prev) => [...prev, response.final_image_url!])
-          setGeneratedImage(response.final_image_url)
+        // Handle response (same as existing logic below)
+        // Update conversation state
+        if (response.conversation_history) {
+          setConversationHistory(response.conversation_history)
+        }
+        if (response.conversation_data) {
+          setConversationData(response.conversation_data)
         }
 
-        // Add success message
-        setAgentMessages((prev) => [
-          ...prev,
-          {
-            id: (Date.now() + 2).toString(),
-            type: "agent",
-            content: `Found ${response.selected_item_ids.length} matching materials in inventory.`,
-          },
-        ])
-      } else {
-        // Handle error
-        setAgentMessages((prev) => [
-          ...prev,
-          {
-            id: (Date.now() + 2).toString(),
-            type: "agent",
-            content: response.error || "Build failed. Please try a different design.",
-          },
-        ])
-        setConstructionPlan(null)
-        setSelectedItems([])
-        setSelectedItemsData([])
-        setGeneratedImage(null)
+        // Proceeding to workflow
+        setIsInConversation(false)
+
+        // Update messages
+        setAgentMessages((prev) => {
+          const updated = prev.map((msg) =>
+            msg.id === thinkingMessageId
+              ? {
+                ...msg,
+                content: response.success
+                  ? "Build completed successfully!"
+                  : "Build failed - see details below",
+                steps: response.success
+                  ? [
+                    "✓ Style description generated",
+                    "✓ Construction plan created",
+                    `✓ ${response.selected_item_ids.length} materials selected`,
+                    "✓ Image prompt optimized",
+                    response.final_image_url ? "✓ Image generated" : "⏳ Image generation in progress",
+                  ]
+                  : [`✗ Error: ${response.error || "Unknown error"}`],
+              }
+              : msg,
+          )
+          return updated
+        })
+
+        if (response.success && response.status === "success") {
+          setStyleDescription(response.style_description || null)
+          setConstructionPlan(response.construction_plan || null)
+          setSelectedItems(response.selected_item_ids)
+          setSelectedItemsData(response.selected_items)
+
+          if (response.final_image_url) {
+            setImageHistory((prev) => [...prev, response.final_image_url!])
+            setGeneratedImage(response.final_image_url)
+          }
+
+          setAgentMessages((prev) => [
+            ...prev,
+            {
+              id: generateMessageId(),
+              type: "agent",
+              content: `Found ${response.selected_item_ids.length} matching materials in inventory.`,
+            },
+          ])
+        } else {
+          setAgentMessages((prev) => [
+            ...prev,
+            {
+              id: generateMessageId(),
+              type: "agent",
+              content: response.error || "Build failed. Please try a different design.",
+            },
+          ])
+          setConstructionPlan(null)
+          setSelectedItems([])
+          setSelectedItemsData([])
+          setGeneratedImage(null)
+        }
+
+        setIsThinking(false)
+        return
       }
+
+      // For conversation, use streaming endpoint
+      let streamedContent = ""
+
+      await streamBuildProject(
+        {
+          user_query: prompt,
+          previous_style_description: styleDescription || undefined,
+          previous_image_url: generatedImage || undefined,
+          conversation_history: updatedHistory,
+          conversation_data: conversationData,
+          skip_conversation: skipConversation,
+        },
+        // onChunk - update message content as chunks arrive
+        (chunk: string) => {
+          streamedContent += chunk
+          setAgentMessages((prev) =>
+            prev.map((msg) =>
+              msg.id === thinkingMessageId
+                ? { ...msg, content: streamedContent }
+                : msg
+            )
+          )
+        },
+        // onComplete - handle completion
+        async (data) => {
+          setIsThinking(false)
+
+          // Update conversation state
+          const finalHistory = [...updatedHistory]
+          if (streamedContent) {
+            finalHistory.push({
+              role: "assistant",
+              content: streamedContent,
+            })
+          }
+          setConversationHistory(finalHistory)
+
+          if (data.conversation_data) {
+            setConversationData(data.conversation_data)
+          }
+
+          if (data.ready_for_workflow) {
+            // Proceed to workflow
+            setIsInConversation(false)
+
+            // Update message to show workflow is starting
+            setAgentMessages((prev) =>
+              prev.map((msg) =>
+                msg.id === thinkingMessageId
+                  ? {
+                    ...msg,
+                    content: "Great! I have enough information. Now generating your design...",
+                    steps: [
+                      "Style Optimizer: Expanding design vision...",
+                      "Planner: Creating construction plan...",
+                      "Inventory Clerk: Searching for materials...",
+                      "Prompt Engineer: Optimizing image prompt...",
+                      "Flux Generator: Rendering image...",
+                    ],
+                  }
+                  : msg
+              )
+            )
+
+            // Now call the regular build endpoint to proceed with workflow
+            try {
+              const workflowResponse: BuildResponse = await buildProject({
+                user_query: prompt,
+                previous_style_description: styleDescription || undefined,
+                previous_image_url: generatedImage || undefined,
+                conversation_history: finalHistory,
+                conversation_data: data.conversation_data || conversationData,
+                skip_conversation: false, // We're ready now
+              })
+
+              // Handle workflow response
+              if (workflowResponse.status === "success") {
+                setStyleDescription(workflowResponse.style_description || null)
+                setConstructionPlan(workflowResponse.construction_plan || null)
+                setSelectedItems(workflowResponse.selected_item_ids)
+                setSelectedItemsData(workflowResponse.selected_items)
+
+                if (workflowResponse.final_image_url) {
+                  setImageHistory((prev) => [...prev, workflowResponse.final_image_url!])
+                  setGeneratedImage(workflowResponse.final_image_url)
+                }
+
+                setAgentMessages((prev) => [
+                  ...prev,
+                  {
+                    id: generateMessageId(),
+                    type: "agent",
+                    content: `Found ${workflowResponse.selected_item_ids.length} matching materials in inventory.`,
+                  },
+                ])
+              }
+            } catch (error) {
+              const errorMessage = error instanceof Error ? error.message : "Failed to generate design"
+              setAgentMessages((prev) => [
+                ...prev,
+                {
+                  id: generateMessageId(),
+                  type: "agent",
+                  content: `Error: ${errorMessage}`,
+                },
+              ])
+            }
+          } else {
+            // Still in conversation
+            setIsInConversation(true)
+          }
+        },
+        // onError
+        (error: string) => {
+          setIsThinking(false)
+          setAgentMessages((prev) => [
+            ...prev,
+            {
+              id: generateMessageId(),
+              type: "agent",
+              content: `Error: ${error}`,
+            },
+          ])
+        }
+      )
     } catch (error) {
       // Handle API error
       const errorMessage = error instanceof Error ? error.message : "Failed to connect to backend"
       setAgentMessages((prev) => [
         ...prev,
         {
-          id: (Date.now() + 2).toString(),
+          id: generateMessageId(),
           type: "agent",
           content: `Error: ${errorMessage}. Please check your backend connection.`,
         },
@@ -176,7 +345,7 @@ export default function BuildableDashboard() {
         setAgentMessages((prev) => [
           ...prev,
           {
-            id: Date.now().toString(),
+            id: generateMessageId(),
             type: "agent",
             content: `Assembly manual generated successfully with ${response.assembly_manual_images.length} steps!`,
           },
@@ -185,7 +354,7 @@ export default function BuildableDashboard() {
         setAgentMessages((prev) => [
           ...prev,
           {
-            id: Date.now().toString(),
+            id: generateMessageId(),
             type: "agent",
             content: response.error || "Failed to generate assembly manual. Please try again.",
           },
@@ -196,7 +365,7 @@ export default function BuildableDashboard() {
       setAgentMessages((prev) => [
         ...prev,
         {
-          id: Date.now().toString(),
+          id: generateMessageId(),
           type: "agent",
           content: `Error: ${errorMessage}`,
         },
@@ -236,6 +405,8 @@ export default function BuildableDashboard() {
           isThinking={isThinking}
           messageRef={scrollRef}
           selectedItemsCount={selectedItems.length}
+          isInConversation={isInConversation}
+          onSkipConversation={() => handleBuild("", true)}
         />
       </div>
 
