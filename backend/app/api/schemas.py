@@ -11,12 +11,21 @@ class BuildRequest(BaseModel):
         min_length=1,
         max_length=500,
     )
+    previous_style_description: Optional[str] = Field(
+        None,
+        description="Previous style description for context (for iterative edits)",
+    )
+    previous_image_url: Optional[str] = Field(
+        None,
+        description="Previous generated image URL (for image-to-image editing)",
+    )
 
 
 class BuildResponse(BaseModel):
     """Response schema for the /build endpoint."""
     success: bool = Field(..., description="Whether the build was successful")
     user_query: str = Field(..., description="The original user query")
+    style_description: Optional[str] = Field(None, description="The generated style description")
     construction_plan: Optional[str] = Field(None, description="The generated construction plan")
     selected_item_ids: List[str] = Field(default_factory=list, description="IDs of selected inventory items")
     selected_items: List[Dict[str, Any]] = Field(

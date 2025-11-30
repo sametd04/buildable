@@ -35,37 +35,53 @@ def node_style_optimizer(state: AgentState) -> Dict[str, Any]:
     """
     llm = get_llm()
     
+    # Check if we have previous style description (for iterative edits)
+    previous_style = state.get("style_description", "")
+    
+    if previous_style:
+        # Iterative edit - modify existing description
+        prompt = ChatPromptTemplate.from_messages([
+            ("system", """You are an expert Design Consultant. You are modifying an existing design based on new user feedback.
+            
+Previous design description:
+{previous_style}
 
-    prompt = ChatPromptTemplate.from_messages([
-        ("system", """
-    User's request: {user_query}
-    """)
-    ])
+User's new request: {user_query}
 
-    """
-    prompt = ChatPromptTemplate.from_messages([
-        ("system", ""You are an expert Design Consultant. Your job is to take a short user request 
-        and expand it into a detailed, paragraph-long visual description focusing on mood, texture, 
-        and lighting. Do not list specific parts, just the vibe.
+Update the design description to incorporate the user's changes while maintaining the overall vision.
+Focus on what changed (mood, texture, color, lighting, etc.)."""),
+            ("human", "Update the design description based on my request."),
+        ])
         
-        Create a rich, evocative description that captures:
-        - The overall aesthetic and mood
-        - Visual textures and finishes
-        - Color palette and lighting atmosphere
-        - The feeling and character of the design
-        - Any thematic elements or style references
-        
-        Keep it focused on the visual and emotional aspects, not on construction details or materials.""),
-        ("human", ""User's request: {user_query}
+        response = llm.invoke(prompt.format_messages(
+            previous_style=previous_style,
+            user_query=state["user_query"]
+        ))
+    else:
+        # New design - create from scratch
+        prompt = ChatPromptTemplate.from_messages([
+            ("system", """You are an expert Design Consultant. Your job is to take a short user request 
+and expand it into a detailed, paragraph-long visual description focusing on mood, texture, 
+and lighting. Do not list specific parts, just the vibe.
+
+Create a rich, evocative description that captures:
+- The overall aesthetic and mood
+- Visual textures and finishes
+- Color palette and lighting atmosphere
+- The feeling and character of the design
+- Any thematic elements or style references
+
+Keep it focused on the visual and emotional aspects, not on construction details or materials."""),
+            ("human", """User's request: {user_query}
 
 Expand this into a detailed visual description focusing on the aesthetic, mood, texture, and lighting. 
-Write a paragraph that captures the vibe and feeling of this design.""),
-    ])"""
-    
-    chain = prompt | llm
-    response = chain.invoke({
-        "user_query": state["user_query"],
-    })
+Write a paragraph that captures the vibe and feeling of this design."""),
+        ])
+        
+        chain = prompt | llm
+        response = chain.invoke({
+            "user_query": state["user_query"],
+        })
     
     style_description = response.content
     
@@ -398,7 +414,14 @@ def node_flux_generator(state: AgentState) -> Dict[str, Any]:
     """
     from app.services.flux_service import generate_image
     
-    image_url = generate_image(state["flux_prompt"], "https://www.thecontractchair.co.uk/media/re_branding/ck_uploads/from_tiny_editor/ash-wood-table-top%20(3).webp", )
+    # Use previous image if available (for image-to-image editing)
+    previous_image = state.get("final_image_url")
+    
+    image_url = generate_image(
+        prompt=state["flux_prompt"],
+        material_image_url="https://www.thecontractchair.co.uk/media/re_branding/ck_uploads/from_tiny_editor/ash-wood-table-top%20(3).webp",
+        previous_image_url=previous_image,
+    )
     
     return {
         "final_image_url": image_url,
