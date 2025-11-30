@@ -82,11 +82,10 @@ export function Warehouse({
               <Card
                 key={item.id}
                 onClick={() => onSelectItem(item.id)}
-                className={`p-3 cursor-pointer transition-all border-2 flex-shrink-0 w-40 ${
-                  selectedItems.includes(item.id)
+                className={`p-3 cursor-pointer transition-all border-2 flex-shrink-0 w-40 ${selectedItems.includes(item.id)
                     ? "border-primary bg-muted"
                     : "border-border bg-card hover:border-primary/50"
-                }`}
+                  }`}
               >
                 <div className="flex flex-col gap-2 h-full">
                   {/* Thumbnail */}

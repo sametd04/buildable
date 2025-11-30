@@ -25,6 +25,14 @@ class BuildResponse(BaseModel):
     )
     flux_prompt: Optional[str] = Field(None, description="The optimized FLUX prompt")
     final_image_url: Optional[str] = Field(None, description="URL of the generated image")
+    assembly_manual_prompts: List[str] = Field(
+        default_factory=list,
+        description="List of prompts for each assembly step"
+    )
+    assembly_manual_images: List[str] = Field(
+        default_factory=list,
+        description="List of image URLs for each assembly step"
+    )
     error: Optional[str] = Field(None, description="Error message if build failed")
 
 

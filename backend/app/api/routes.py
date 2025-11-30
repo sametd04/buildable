@@ -31,6 +31,8 @@ async def build(request: BuildRequest) -> BuildResponse:
             "selected_item_ids": [],
             "flux_prompt": None,
             "final_image_url": None,
+            "assembly_manual_prompts": [],
+            "assembly_manual_images": [],
             "retry_count": 0,
             "clerk_feedback": None,
             "status": "processing",
@@ -80,6 +82,8 @@ async def build(request: BuildRequest) -> BuildResponse:
                 selected_items=[],
                 flux_prompt=None,
                 final_image_url=None,
+                assembly_manual_prompts=[],
+                assembly_manual_images=[],
                 error="We couldn't find the specific parts for your request. Please try a different design or use more common materials.",
             )
         
@@ -98,6 +102,8 @@ async def build(request: BuildRequest) -> BuildResponse:
             selected_items=selected_items,
             flux_prompt=final_state.get("flux_prompt"),
             final_image_url=final_state.get("final_image_url"),
+            assembly_manual_prompts=final_state.get("assembly_manual_prompts", []),
+            assembly_manual_images=final_state.get("assembly_manual_images", []),
         )
         
     except ConnectionError as e:
