@@ -234,8 +234,18 @@ async def build(request: BuildRequest) -> BuildResponse:
     """
     try:
         # Initialize state (no need to load inventory into memory)
-        # If skip_conversation is True and user_query is empty, use a default
+        # Extract user_query - prioritize request, then extract from conversation_history, then use default
         user_query = request.user_query.strip() if request.user_query else ""
+        
+        # If user_query is empty, try to extract it from conversation_history
+        if not user_query and request.conversation_history:
+            # Find the first user message in conversation_history
+            for msg in request.conversation_history:
+                if msg.get("role") == "user" and msg.get("content"):
+                    user_query = msg.get("content", "").strip()
+                    break
+        
+        # If still empty and skip_conversation is True, use a default
         if request.skip_conversation and not user_query:
             user_query = "Generate a design based on available materials"
         
@@ -435,7 +445,9 @@ async def generate_assembly_manual(request: GenerateAssemblyManualRequest) -> Ge
             "final_image_url": request.final_image_url,  # Use confirmed product image for consistency
             "material_image": material_image,
             "assembly_manual_prompts": [],
+            "assembly_manual_parts": [],
             "assembly_manual_images": [],
+            "parts_overview_image": None,
             "retry_count": 0,
             "clerk_feedback": None,
             "status": "processing",
@@ -453,7 +465,9 @@ async def generate_assembly_manual(request: GenerateAssemblyManualRequest) -> Ge
         return GenerateAssemblyManualResponse(
             success=True,
             assembly_manual_prompts=state.get("assembly_manual_prompts", []),
+            assembly_manual_parts=state.get("assembly_manual_parts", []),
             assembly_manual_images=state.get("assembly_manual_images", []),
+            parts_overview_image=state.get("parts_overview_image"),
         )
         
     except Exception as e:

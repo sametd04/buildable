@@ -36,7 +36,9 @@ class AgentState(TypedDict):
     final_image_url: Optional[str]
     material_image: Optional[str]
     assembly_manual_prompts: List[str]
+    assembly_manual_parts: List[Any]
     assembly_manual_images: List[str]
+    parts_overview_image: Optional[str]
     retry_count: int
     clerk_feedback: Optional[str]
     status: str

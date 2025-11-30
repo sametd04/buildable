@@ -4,7 +4,7 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { Card } from "@/components/ui/card"
-import { RotateCcw, FileDown, Cpu, ChevronDown, ChevronUp, History, BookOpen, Loader2 } from "lucide-react"
+import { RotateCcw, FileDown, Cpu, ChevronDown, ChevronUp, History, BookOpen, Loader2, Package } from "lucide-react"
 import { ImageCanvas } from "./image-canvas"
 
 export function AssemblyWorkbench({
@@ -17,6 +17,7 @@ export function AssemblyWorkbench({
   onParentSelect,
   assemblyManualImages = [],
   assemblyManualPrompts = [],
+  partsOverviewImage = null,
   onGenerateAssemblyManual,
   isGeneratingManual = false,
   canGenerateManual = false,
@@ -30,6 +31,7 @@ export function AssemblyWorkbench({
   onParentSelect?: (indices: number[]) => void
   assemblyManualImages?: string[]
   assemblyManualPrompts?: any[]
+  partsOverviewImage?: string | null
   onGenerateAssemblyManual?: () => void
   isGeneratingManual?: boolean
   canGenerateManual?: boolean
@@ -139,13 +141,37 @@ export function AssemblyWorkbench({
                 </div>
               </div>
             ) : (
-              <div className="p-6 space-y-6">
+              <div className="p-6 space-y-6 max-w-4xl mx-auto">
                 <div className="flex items-center justify-between">
                   <h2 className="text-lg font-semibold">Assembly Instructions</h2>
                   <span className="text-sm text-muted-foreground">
                     {assemblyManualImages.length} step{assemblyManualImages.length !== 1 ? "s" : ""}
                   </span>
                 </div>
+
+                {/* Parts Overview Card */}
+                {partsOverviewImage && (
+                  <Card className="p-4 border-primary/20 bg-primary/5">
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-2">
+                        <Package className="w-5 h-5 text-primary" />
+                        <h3 className="font-semibold text-primary">Box Contents & Parts List</h3>
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        Check that you have all components before starting assembly.
+                      </p>
+                      <div className="rounded-lg overflow-hidden border border-border bg-white">
+                        <img
+                          src={partsOverviewImage}
+                          alt="Parts Overview"
+                          className="w-full h-auto"
+                        />
+                      </div>
+                    </div>
+                  </Card>
+                )}
+
+                {/* Steps */}
                 <div className="space-y-8">
                   {assemblyManualImages.map((imageUrl, index) => (
                     <Card key={index} className="p-4">

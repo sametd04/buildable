@@ -244,8 +244,11 @@ export default function BuildableDashboard() {
 
             // Now call the regular build endpoint to proceed with workflow
             try {
+              // Extract original user query from conversation history if prompt is empty
+              const originalQuery = prompt || finalHistory.find(msg => msg.role === "user")?.content || ""
+
               const workflowResponse: BuildResponse = await buildProject({
-                user_query: prompt,
+                user_query: originalQuery,
                 previous_style_description: styleDescription || undefined,
                 previous_image_url: generatedImage || undefined,
                 conversation_history: finalHistory,
@@ -406,7 +409,11 @@ export default function BuildableDashboard() {
           messageRef={scrollRef}
           selectedItemsCount={selectedItems.length}
           isInConversation={isInConversation}
-          onSkipConversation={() => handleBuild("", true)}
+          onSkipConversation={() => {
+            // Extract original user query from conversation history if available
+            const originalQuery = conversationHistory.find(msg => msg.role === "user")?.content || ""
+            handleBuild(originalQuery, true)
+          }}
         />
       </div>
 
