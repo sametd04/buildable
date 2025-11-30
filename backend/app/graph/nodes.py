@@ -19,7 +19,7 @@ def get_llm():
     llm = ChatOpenAI(
         model=settings.llm_model,
         api_key=settings.openai_api_key,
-        temperature=0.7,
+        temperature=0.3,  # Lower temperature for more focused responses
     )
     
     return llm
@@ -64,23 +64,24 @@ def node_conversation_agent(state: AgentState) -> Dict[str, Any]:
     messages = []
     if len(conversation_history) == 0:
         # First message - add system prompt
-        system_prompt = f"""You are a friendly and helpful design consultant helping users create custom DIY furniture and structures.
+        system_prompt = f"""You gather info, then call RequiredData tool. NO explanations.
 
-Your goal is to have a natural conversation to gather the following information:
-1. **Use Case & Purpose**: What will this be used for? (e.g., workspace, storage, decoration)
-2. **Dimensions & Size**: Approximate size requirements (e.g., "fits in a corner", "desk height", "shelf width")
-3. **Style Preferences**: Aesthetic style, mood, colors, textures (e.g., industrial, minimalist, rustic, modern)
-4. **Material Preferences**: Any specific material preferences or constraints (e.g., wood type, metal finish) - optional
-5. **Personalization**: Any personal touches or specific requirements (e.g., "needs to match my existing furniture") - optional
-6. **Constraints**: Any space, budget, or functional constraints - optional
+EXAMPLE 1:
+User: "build me a simple chair"
+Analysis: ✓ use_case (chair), ✓ dimensions (standard), ✓ style (simple)
+Action: Call RequiredData(use_case="chair", dimensions="standard adult chair size", style_preferences="simple and functional")
 
-Keep the conversation natural and friendly. Ask 1-2 questions at a time. Don't be overwhelming.
+EXAMPLE 2:
+User: "I need a shelf"
+Analysis: ✓ use_case (shelf), ✗ dimensions, ✗ style
+Action: Ask "What size and style do you prefer?"
 
-IMPORTANT: Once you have gathered enough information to fill in the required fields (use_case, dimensions, style_preferences), you should call the RequiredData tool with the information you've collected. The material_preferences, personalization, and constraints fields are optional and can be left empty if not mentioned.
+NOW YOUR TURN:
+User: "{user_query}"
 
-User's initial request: {user_query}
-
-Start the conversation by asking 1-2 clarifying questions to better understand their needs."""
+If you have use_case + dimensions + style → Call RequiredData tool NOW
+If missing info → Ask ONE question (max 10 words)
+NEVER give building instructions or detailed plans."""
         messages.append(SystemMessage(content=system_prompt))
         messages.append(HumanMessage(content=user_query))
     else:
@@ -117,8 +118,14 @@ Start the conversation by asking 1-2 clarifying questions to better understand t
     has_tool_call = False
     conversation_data = {}
     
+    print(f"🔍 Checking for tool calls in response...")
+    print(f"   Has tool_calls attribute: {hasattr(response, 'tool_calls')}")
+    if hasattr(response, "tool_calls"):
+        print(f"   Tool calls: {response.tool_calls}")
+    
     if hasattr(response, "tool_calls") and response.tool_calls:
         for tool_call in response.tool_calls:
+            print(f"   → Tool call found: {tool_call.get('name')}")
             if tool_call.get("name") == "RequiredData" or "RequiredData" in str(tool_call):
                 has_tool_call = True
                 args = tool_call.get("args", {})
@@ -130,12 +137,16 @@ Start the conversation by asking 1-2 clarifying questions to better understand t
                     "personalization": args.get("personalization", ""),
                     "constraints": args.get("constraints", ""),
                 }
+                print(f"✅ RequiredData tool called with: {conversation_data}")
                 # Add confirmation message
                 conversation_history.append({
                     "role": "assistant",
                     "content": "Great! I have enough information to create your design. Let me proceed with generating it...",
                 })
                 break
+    
+    if not has_tool_call:
+        print(f"❌ No RequiredData tool call found - staying in conversation mode")
     
     if has_tool_call:
         return {

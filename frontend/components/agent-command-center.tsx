@@ -26,6 +26,7 @@ export function AgentCommandCenter({
   selectedItemsCount,
   isInConversation = false,
   onSkipConversation,
+  hasConversationData = false,
 }: {
   messages: Message[]
   onBuild: (prompt: string, skipConversation?: boolean) => void
@@ -34,6 +35,7 @@ export function AgentCommandCenter({
   selectedItemsCount: number
   isInConversation?: boolean
   onSkipConversation?: () => void
+  hasConversationData?: boolean
 }) {
   const [inputValue, setInputValue] = useState("")
 
@@ -245,9 +247,10 @@ export function AgentCommandCenter({
           {isInConversation && (
             <Button
               onClick={handleSkipConversation}
-              disabled={isThinking}
+              disabled={isThinking || !hasConversationData}
               variant="outline"
               className="flex-1 h-8 font-semibold text-xs"
+              title={!hasConversationData ? "Please answer at least one question first" : "Skip to design generation"}
             >
               Skip Conversation
             </Button>
