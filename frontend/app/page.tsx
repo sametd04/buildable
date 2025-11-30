@@ -130,7 +130,6 @@ export default function BuildableDashboard() {
         setSelectedItems([])
         setSelectedItemsData([])
         setGeneratedImage(null)
-        setAssemblyManualImages([])
       }
     } catch (error) {
       // Handle API error
@@ -191,7 +190,6 @@ export default function BuildableDashboard() {
           <AssemblyWorkbench
             generatedImage={generatedImage}
             constructionPlan={constructionPlan}
-            assemblyManualImages={assemblyManualImages}
             onRegenerate={() => setGeneratedImage(null)}
             imageHistory={imageHistory}
             onSelectHistoryImage={(imageUrl) => setGeneratedImage(imageUrl)}

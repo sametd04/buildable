@@ -10,7 +10,6 @@ import { ImageCanvas } from "./image-canvas"
 export function AssemblyWorkbench({
   generatedImage,
   constructionPlan,
-  assemblyManualImages,
   onRegenerate,
   imageHistory = [],
   onSelectHistoryImage,
@@ -19,7 +18,6 @@ export function AssemblyWorkbench({
 }: {
   generatedImage: string | null
   constructionPlan: string | null
-  assemblyManualImages: string[]
   onRegenerate: () => void
   imageHistory?: string[]
   onSelectHistoryImage?: (imageUrl: string) => void
@@ -32,7 +30,7 @@ export function AssemblyWorkbench({
     <div className="flex flex-col h-full">
       {/* Toolbar */}
       <div className="border-b border-border bg-card p-4">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <Tabs value="hero" className="w-full">
           <TabsList className="bg-muted border border-border">
             <TabsTrigger value="hero" className="text-xs">
               Hero Render
@@ -97,9 +95,8 @@ export function AssemblyWorkbench({
                   <button
                     key={index}
                     onClick={() => onSelectHistoryImage?.(imageUrl)}
-                    className={`flex-shrink-0 w-20 h-20 rounded border-2 overflow-hidden transition-all hover:border-primary ${
-                      imageUrl === generatedImage ? "border-primary ring-2 ring-primary/20" : "border-border"
-                    }`}
+                    className={`flex-shrink-0 w-20 h-20 rounded border-2 overflow-hidden transition-all hover:border-primary ${imageUrl === generatedImage ? "border-primary ring-2 ring-primary/20" : "border-border"
+                      }`}
                     title={`Version ${imageHistory.length - index}`}
                   >
                     <img src={imageUrl} alt={`History ${index}`} className="w-full h-full object-cover" />
