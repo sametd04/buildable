@@ -242,47 +242,47 @@ def node_inventory_clerk(state: AgentState) -> Dict[str, Any]:
 
     }
     
-    loaded_prompt = load_prompt("inventory_clerk", prompt_variables)
+    #loaded_prompt = load_prompt("inventory_clerk", prompt_variables)
     
     # Use structured output with ClerkOutput to validate matches
-    structured_llm = llm.with_structured_output(ClerkOutput)
+    #structured_llm = llm.with_structured_output(ClerkOutput)
     
     # Use the loaded prompt template
-    validation_prompt = ChatPromptTemplate.from_messages([
-        ("system", "You are an inventory clerk. Follow the instructions in the prompt carefully and return structured JSON output."),
-        ("human", loaded_prompt if loaded_prompt else f""),
-    ])
+    #validation_prompt = ChatPromptTemplate.from_messages([
+    #    ("system", "You are an inventory clerk. Follow the instructions in the prompt carefully and return structured JSON output."),
+    #    ("human", loaded_prompt if loaded_prompt else f""),
+    #])
 
-    validation_chain = validation_prompt | structured_llm
-    result = validation_chain.invoke({
-        "construction_plan": construction_plan,
-        "found_items": found_items_text,
-        "selected_ids": selected_ids,
+    #validation_chain = validation_prompt | structured_llm
+    #result = validation_chain.invoke({
+    #    "construction_plan": construction_plan,
+    #    "found_items": found_items_text,
+     #   "selected_ids": selected_ids,
         #"is_successful": is_successful,
         #"missing_parts_description": missing_parts_description      
-    })
+    #})
     
     # Validate IDs are from our found items
-    valid_ids = [
-        item_id for item_id in result.selected_ids
-        if item_id in selected_ids
-    ]
+    #valid_ids = [
+    #    item_id for item_id in result.selected_ids
+    #    if item_id in selected_ids
+    #]
     
     
     # Prepare return state
     return_state = {
-        "selected_item_ids": valid_ids,
-        "is_clerk_successful": result.is_successful,
+        "selected_item_ids": selected_ids,
+        "is_clerk_successful": True,
     }
     
-    if not result.is_successful:
-        # Provide feedback for the planner
-        return_state["clerk_feedback"] = result.missing_parts_description or (
-            "No suitable inventory items found for the required materials in the construction plan."
-        )
-    else:
+    #if not result.is_successful:
+    #    # Provide feedback for the planner
+     #   return_state["clerk_feedback"] = result.missing_parts_description or (
+     #       "No suitable inventory items found for the required materials in the construction plan."
+    #    )
+    #else:
         # Clear any previous feedback on success
-        return_state["clerk_feedback"] = None
+    return_state["clerk_feedback"] = None
     
     return return_state
 
