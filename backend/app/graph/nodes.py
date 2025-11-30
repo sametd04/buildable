@@ -78,10 +78,12 @@ Focus on what changed (mood, texture, color, lighting, etc.)."""),
         if not rendered_prompt:
             raise ValueError("Failed to load 'optimize_user_query.md' or template is empty")
         
-    chain = prompt | llm
-    response = chain.invoke({
-        "user_query": state["user_query"],
-    })
+        prompt = ChatPromptTemplate.from_messages([
+        ("system", rendered_prompt),
+        ])
+
+        chain = prompt | llm
+        response = chain.invoke({})
     
     style_description = response.content
     
