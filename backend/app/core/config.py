@@ -23,6 +23,9 @@ class Settings(BaseSettings):
     # FLUX API Configuration (Black Forest Labs)
     bfl_api_key: Optional[str] = None
     flux_model: str = "flux-2-pro"  # Options: flux-pro-1.1, flux-pro, flux-dev, flux-schnell
+    
+    # Image Hosting Configuration (for composed parent images)
+    imgbb_api_key: Optional[str] = None  # Get free API key from https://api.imgbb.com/
 
     # Langfuse Configuration
     langfuse_public_key: Optional[str] = None

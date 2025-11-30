@@ -18,6 +18,10 @@ class BuildRequest(BaseModel):
         None,
         description="Previous generated image URL (for image-to-image editing)",
     )
+    previous_image_urls: Optional[List[str]] = Field(
+        None,
+        description="Multiple previous generated image URLs to compose as context (for multi-image style fusion)",
+    )
     conversation_history: Optional[List[Dict[str, Any]]] = Field(
         None,
         description="Previous conversation history for continuing the conversation",

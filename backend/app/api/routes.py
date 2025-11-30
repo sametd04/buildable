@@ -249,6 +249,23 @@ async def build(request: BuildRequest) -> BuildResponse:
         if request.skip_conversation and not user_query:
             user_query = "Generate a design based on available materials"
         
+        # Handle multiple previous images - compose them if provided
+        previous_image_url = request.previous_image_url
+        if request.previous_image_urls and len(request.previous_image_urls) > 0:
+            from app.utils.compose_images import compose_and_upload_images
+            print(f"🖼️  Composing {len(request.previous_image_urls)} parent images...")
+            composed_url = compose_and_upload_images(request.previous_image_urls)
+            if composed_url:
+                previous_image_url = composed_url
+                print(f"✅ Composed image URL: {composed_url[:60]}...")
+            else:
+                # Fallback to single image if composition fails
+                if request.previous_image_url:
+                    previous_image_url = request.previous_image_url
+                elif len(request.previous_image_urls) == 1:
+                    previous_image_url = request.previous_image_urls[0]
+                print(f"⚠️  Failed to compose images, using fallback")
+        
         initial_state: AgentState = {
             "user_query": user_query,
             "conversation_history": request.conversation_history or [],
@@ -259,7 +276,7 @@ async def build(request: BuildRequest) -> BuildResponse:
             "construction_plan": None,
             "selected_item_ids": [],
             "flux_prompt": None,
-            "final_image_url": None,
+            "final_image_url": previous_image_url,  # Set composed or single previous image
             "assembly_manual_prompts": [],
             "assembly_manual_images": [],
             "retry_count": 0,
@@ -445,9 +462,7 @@ async def generate_assembly_manual(request: GenerateAssemblyManualRequest) -> Ge
             "final_image_url": request.final_image_url,  # Use confirmed product image for consistency
             "material_image": material_image,
             "assembly_manual_prompts": [],
-            "assembly_manual_parts": [],
             "assembly_manual_images": [],
-            "parts_overview_image": None,
             "retry_count": 0,
             "clerk_feedback": None,
             "status": "processing",
@@ -465,9 +480,9 @@ async def generate_assembly_manual(request: GenerateAssemblyManualRequest) -> Ge
         return GenerateAssemblyManualResponse(
             success=True,
             assembly_manual_prompts=state.get("assembly_manual_prompts", []),
-            assembly_manual_parts=state.get("assembly_manual_parts", []),
+            assembly_manual_parts=[],  # Deprecated - no longer used
             assembly_manual_images=state.get("assembly_manual_images", []),
-            parts_overview_image=state.get("parts_overview_image"),
+            parts_overview_image=None,  # Deprecated - no longer used
         )
         
     except Exception as e:

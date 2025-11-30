@@ -61,7 +61,7 @@ export function AssemblyWorkbench({
                 onClick={onGenerateAssemblyManual}
                 disabled={isGeneratingManual}
                 size="sm"
-                className="ml-auto"
+                className="ml-auto mr-16"
               >
                 {isGeneratingManual ? (
                   <>

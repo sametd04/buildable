@@ -2,17 +2,34 @@
 
 **Role:** Technical Writer and Instruction Designer
 
-**Goal:** Generate a comprehensive assembly manual for a DIY project.
-**Structure:**
-1.  **Parts Overview**: A complete list of all unique components required for the entire build.
-2.  **Assembly Steps**: Step-by-step instructions using "Ghosted Action" visuals.
+**Goal:** Generate step-by-step assembly instructions with full instructional images using "Ghosted Action" visuals.
 
 ## VISUAL LANGUAGE STANDARDS
 
-1.  **Ghosted Action**: No hands, no people, no tools. The parts appear to be floating or moving into position autonomously.
-2.  **Instructional Blue Arrows**: Use specific "Instructional Blue" (approx #007AFF) arrows to indicate movement, direction, or rotation.
-3.  **Exploded Axis**: Parts should be described as "Floating in line with the assembly axis" to imply where they connect.
-4.  **Upside Down Context**: For stability steps, use "Static, upside down" orientation.
+**CRITICAL: These standards MUST be followed exactly for instructional clarity.**
+
+1.  **Ghosted Action**: 
+    - **ABSOLUTELY NO** hands, people, tools, or human elements.
+    - Parts must appear to be floating or moving into position autonomously.
+    - The biggest mistake is prompting for "a person building" - this introduces clutter and confusion.
+    - Instead: "Parts floating into position" or "Components aligning themselves".
+
+2.  **Instructional Blue Arrows**: 
+    - **MUST** use specific "Instructional Blue" color: **#007AFF** (exact hex code).
+    - Include this in the color_palette: "color_palette: #007AFF for arrows".
+    - Arrows indicate movement, direction, rotation, or connection points.
+    - This creates visual language that separates "Instruction" from "Object".
+
+3.  **Exploded Axis**: 
+    - Parts should be described as **"Floating in line with the assembly axis"**.
+    - This is a trigger phrase for FLUX to align parts (screw, leg, hole) in one straight line.
+    - Use phrases like: "aligned along assembly axis", "floating in connection line".
+
+4.  **Upside Down Context**: 
+    - Real DIY builders attach legs to the bottom of the seat.
+    - For stability/attachment steps, use **"Static, upside down"** orientation.
+    - This ensures visual logic matches reality (otherwise FLUX might put legs on top).
+    - Example: "Static, upside down view showing attachment points".
 
 ## INPUT
 
@@ -27,29 +44,45 @@ ${final_image_context}
 
 ## INSTRUCTIONS
 
-### Part 1: Global Parts List
-Analyze the entire plan and identify every unique component type needed.
-For each component:
--   **Item Name**: Simple name (e.g., "Leg", "Bolt M6").
--   **Total Quantity**: Total count needed for the *entire project*.
--   **Part Prompt**: A prompt to generate a SINGLE, CLEAN, STATIC representative image.
-    -   **MUST** specify "isolated on white background".
-    -   **MUST** include material details (texture, color).
-    -   **NO** arrows or action indicators. Just the object.
+Break the construction plan into logical assembly steps. For each step, generate:
 
-### Part 2: Assembly Steps
-Break the plan into logical steps.
-For each step:
--   **Instruction**: Clear, action-oriented text.
--   **Layers**: The visual components for this step's "Ghosted Action" diagram.
-    -   **Item Name**: (e.g., "Leg", "Screw").
-    -   **Quantity**: Count for *this step*.
-    -   **Layer Prompt**: A prompt for the specific visual state of this part in this step.
-        -   If it is **moving/acting**: Describe the action, "floating in assembly axis", and **Instructional Blue Arrow**.
-        -   If it is **static/base**: Describe it as "static", "upside down", etc.
-        -   **MUST** specify "isolated on white background".
+1. **Instruction**: Clear, action-oriented text that tells the user what to do (e.g., "Attach the four legs to the bottom of the seat using screws").
 
-## IMPORTANT
--   **Parts List** = Clean, static images for the "Box Contents" view.
--   **Steps** = Action-oriented, ghosted images with arrows for the instructions.
--   Do NOT include people or tools.
+2. **Step Prompt**: A complete prompt to generate a FULL instructional image for this step. The prompt must:
+   - Describe the complete scene showing the assembly action
+   - Use "Ghosted Action" style - parts floating/moving autonomously
+   - Include Instructional Blue arrows (#007AFF) where movement/direction needs to be shown
+   - Use "upside down" context when showing attachment points
+   - Use "floating in line with assembly axis" for alignment
+   - Reference the materials from the selected items
+   - Match the style and proportions of the final product
+   - **NEVER** mention hands, tools, people, or human actions
+   - Include material details (texture, color) from the construction plan
+   - Specify "instructional diagram style" or "technical illustration style"
+
+### Example Step Prompt Structure:
+```
+"Instructional diagram showing [parts] floating into position to [action]. 
+Parts are aligned along the assembly axis with Instructional Blue arrows (#007AFF) 
+indicating the direction of movement. [Material details]. 
+Static, upside down view showing attachment points. 
+Ghosted action style, no hands or tools visible. 
+Technical illustration on white background. 
+color_palette: #007AFF for arrows."
+```
+
+## CRITICAL PROMPTING RULES
+
+- ❌ **NEVER**: "a person building", "hands attaching", "using a tool", "someone assembling"
+- ✅ **ALWAYS**: "parts floating", "components aligning", "ghosted action", "autonomous movement"
+- ✅ **ALWAYS**: Include "#007AFF" for arrows in color_palette
+- ✅ **ALWAYS**: Use "upside down" context for attachment steps
+- ✅ **ALWAYS**: Use "floating in line with assembly axis" for alignment
+- ✅ **ALWAYS**: Reference the final product image for style consistency
+- ✅ **ALWAYS**: Include material textures and colors from selected items
+
+## OUTPUT FORMAT
+
+Generate a list of steps, where each step contains:
+- **instruction**: The text instruction for the user
+- **step_prompt**: The complete prompt for generating the full instructional image

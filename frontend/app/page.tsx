@@ -46,6 +46,14 @@ export default function BuildableDashboard() {
     const updatedHistory = [...conversationHistory, newUserMessage]
     setConversationHistory(updatedHistory)
 
+    // Extract all user messages from conversation history to preserve full context
+    // This ensures the original intent (e.g., "oak chair") is preserved along with follow-up answers
+    const allUserMessages = updatedHistory
+      .filter(msg => msg.role === "user")
+      .map(msg => msg.content)
+      .join(" ")
+    const combinedUserQuery = allUserMessages || prompt
+
     // Add user message to agent messages
     const userMessageId = generateMessageId()
     setAgentMessages((prev) => [
@@ -93,12 +101,26 @@ export default function BuildableDashboard() {
     }
 
     try {
+      // Get selected parent image URLs if any are selected
+      const selectedParentUrls = selectedParentIndices.length > 0
+        ? selectedParentIndices.map((idx) => imageHistory[idx]).filter(Boolean)
+        : undefined
+
+      // Determine which previous image(s) to use: selected parents take priority
+      const previousImageUrl = selectedParentUrls && selectedParentUrls.length === 1
+        ? selectedParentUrls[0]
+        : (selectedParentUrls ? undefined : (generatedImage || undefined))
+      const previousImageUrls = selectedParentUrls && selectedParentUrls.length > 1
+        ? selectedParentUrls
+        : undefined
+
       // If skipping conversation, use regular endpoint
       if (skipConversation) {
         const response: BuildResponse = await buildProject({
-          user_query: prompt,
+          user_query: combinedUserQuery,
           previous_style_description: styleDescription || undefined,
-          previous_image_url: generatedImage || undefined,
+          previous_image_url: previousImageUrl,
+          previous_image_urls: previousImageUrls,
           conversation_history: updatedHistory,
           conversation_data: conversationData,
           skip_conversation: skipConversation,
@@ -181,11 +203,25 @@ export default function BuildableDashboard() {
       // For conversation, use streaming endpoint
       let streamedContent = ""
 
+      // Get selected parent image URLs if any are selected
+      const selectedParentUrlsForStream = selectedParentIndices.length > 0
+        ? selectedParentIndices.map((idx) => imageHistory[idx]).filter(Boolean)
+        : undefined
+
+      // Determine which previous image(s) to use: selected parents take priority
+      const previousImageUrlForStream = selectedParentUrlsForStream && selectedParentUrlsForStream.length === 1
+        ? selectedParentUrlsForStream[0]
+        : (selectedParentUrlsForStream ? undefined : (generatedImage || undefined))
+      const previousImageUrlsForStream = selectedParentUrlsForStream && selectedParentUrlsForStream.length > 1
+        ? selectedParentUrlsForStream
+        : undefined
+
       await streamBuildProject(
         {
-          user_query: prompt,
+          user_query: combinedUserQuery,
           previous_style_description: styleDescription || undefined,
-          previous_image_url: generatedImage || undefined,
+          previous_image_url: previousImageUrlForStream,
+          previous_image_urls: previousImageUrlsForStream,
           conversation_history: updatedHistory,
           conversation_data: conversationData,
           skip_conversation: skipConversation,
@@ -244,13 +280,31 @@ export default function BuildableDashboard() {
 
             // Now call the regular build endpoint to proceed with workflow
             try {
-              // Extract original user query from conversation history if prompt is empty
-              const originalQuery = prompt || finalHistory.find(msg => msg.role === "user")?.content || ""
+              // Extract all user messages from conversation history to preserve full context
+              const allUserMessagesFromHistory = finalHistory
+                .filter(msg => msg.role === "user")
+                .map(msg => msg.content)
+                .join(" ")
+              const historyUserQuery = allUserMessagesFromHistory || prompt
+
+              // Get selected parent image URLs if any are selected
+              const selectedParentUrlsForWorkflow = selectedParentIndices.length > 0
+                ? selectedParentIndices.map((idx) => imageHistory[idx]).filter(Boolean)
+                : undefined
+
+              // Determine which previous image(s) to use: selected parents take priority
+              const previousImageUrlForWorkflow = selectedParentUrlsForWorkflow && selectedParentUrlsForWorkflow.length === 1
+                ? selectedParentUrlsForWorkflow[0]
+                : (selectedParentUrlsForWorkflow ? undefined : (generatedImage || undefined))
+              const previousImageUrlsForWorkflow = selectedParentUrlsForWorkflow && selectedParentUrlsForWorkflow.length > 1
+                ? selectedParentUrlsForWorkflow
+                : undefined
 
               const workflowResponse: BuildResponse = await buildProject({
-                user_query: originalQuery,
+                user_query: historyUserQuery,
                 previous_style_description: styleDescription || undefined,
-                previous_image_url: generatedImage || undefined,
+                previous_image_url: previousImageUrlForWorkflow,
+                previous_image_urls: previousImageUrlsForWorkflow,
                 conversation_history: finalHistory,
                 conversation_data: data.conversation_data || conversationData,
                 skip_conversation: false, // We're ready now
@@ -268,6 +322,26 @@ export default function BuildableDashboard() {
                   setGeneratedImage(workflowResponse.final_image_url)
                 }
 
+                // Update the message with completed steps
+                setAgentMessages((prev) => {
+                  const updated = prev.map((msg) =>
+                    msg.id === thinkingMessageId
+                      ? {
+                        ...msg,
+                        content: "Build completed successfully!",
+                        steps: [
+                          "✓ Style description generated",
+                          "✓ Construction plan created",
+                          `✓ ${workflowResponse.selected_item_ids.length} materials selected`,
+                          "✓ Image prompt optimized",
+                          workflowResponse.final_image_url ? "✓ Image generated" : "⏳ Image generation in progress",
+                        ],
+                      }
+                      : msg,
+                  )
+                  return updated
+                })
+
                 setAgentMessages((prev) => [
                   ...prev,
                   {
@@ -276,6 +350,20 @@ export default function BuildableDashboard() {
                     content: `Found ${workflowResponse.selected_item_ids.length} matching materials in inventory.`,
                   },
                 ])
+              } else {
+                // Update message to show error
+                setAgentMessages((prev) => {
+                  const updated = prev.map((msg) =>
+                    msg.id === thinkingMessageId
+                      ? {
+                        ...msg,
+                        content: "Build failed - see details below",
+                        steps: [`✗ Error: ${workflowResponse.error || "Unknown error"}`],
+                      }
+                      : msg,
+                  )
+                  return updated
+                })
               }
             } catch (error) {
               const errorMessage = error instanceof Error ? error.message : "Failed to generate design"

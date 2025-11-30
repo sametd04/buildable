@@ -562,30 +562,15 @@ def node_flux_generator(state: AgentState) -> Dict[str, Any]:
     }
 
 
-class AssemblyLayer(BaseModel):
-    """One layer/item in an assembly step image."""
-    item_name: str = Field(description="Name of the item (e.g. 'Leg', 'Bolt')")
-    quantity: int = Field(description="Number of items in this group")
-    layer_prompt: str = Field(description="Prompt to generate ONE representative image of this item on a white background")
-
-
-class AssemblyPart(BaseModel):
-    """A unique part in the global parts list."""
-    item_name: str = Field(description="Name of the item (e.g. 'Leg')")
-    total_quantity: int = Field(description="Total quantity needed for the project")
-    part_prompt: str = Field(description="Prompt for a clean, static, isolated image of this part")
-
-
 class AssemblyStep(BaseModel):
     """One step in the assembly process."""
-    instruction: str = Field(description="Text instruction for this step")
-    layers: List[AssemblyLayer] = Field(description="List of item groups needed for this step")
+    instruction: str = Field(description="Clear, action-oriented text instruction for this step")
+    step_prompt: str = Field(description="Full prompt to generate a complete instructional image for this step. Must use 'Ghosted Action' style with no hands/tools/people, include Instructional Blue arrows (#007AFF) where needed, and show parts floating/moving into position.")
 
 
 class AssemblyManualOutput(BaseModel):
     """Pydantic model for structured output from Assembly Manual Prompt Engineer."""
-    parts: List[AssemblyPart] = Field(description="Global list of unique parts")
-    steps: List[AssemblyStep] = Field(description="List of assembly steps")
+    steps: List[AssemblyStep] = Field(description="List of assembly steps with full image prompts")
 
 
 @observe(name="assembly_manual_prompt_engineer")
@@ -593,8 +578,8 @@ def node_assembly_manual_prompt_engineer(state: AgentState) -> Dict[str, Any]:
     """
     Assembly Manual Prompt Engineer Node
     
-    Receives construction_plan and generates parts list AND step-by-step prompts.
-    Updates assembly_manual_prompts (steps) and assembly_manual_parts.
+    Receives construction_plan, final product image, and selected items.
+    Generates step-by-step prompts for full instructional images.
     """
     llm = get_llm()
     
@@ -602,7 +587,6 @@ def node_assembly_manual_prompt_engineer(state: AgentState) -> Dict[str, Any]:
     if not construction_plan:
         return {
             "assembly_manual_prompts": [],
-            "assembly_manual_parts": [],
         }
     
     # Get details of selected items for context
@@ -623,7 +607,7 @@ def node_assembly_manual_prompt_engineer(state: AgentState) -> Dict[str, Any]:
     final_image_url = state.get("final_image_url")
     final_image_context = ""
     if final_image_url:
-        final_image_context = f"CRITICAL: The final product image is available at: {final_image_url}"
+        final_image_context = f"CRITICAL: The final product image is available at: {final_image_url}. Use this as reference for the final appearance and proportions."
     
     prompt_variables = {
         "construction_plan": construction_plan,
@@ -631,7 +615,7 @@ def node_assembly_manual_prompt_engineer(state: AgentState) -> Dict[str, Any]:
         "final_image_context": final_image_context,
     }
     
-    # Load new prompt template
+    # Load prompt template
     rendered_prompt = load_prompt("assembly_manual", prompt_variables)
     
     prompt = ChatPromptTemplate.from_messages([
@@ -646,15 +630,14 @@ def node_assembly_manual_prompt_engineer(state: AgentState) -> Dict[str, Any]:
         result = chain.invoke({})
         # Convert pydantic objects to dicts for state storage
         assembly_steps = [step.model_dump() for step in result.steps]
-        assembly_parts = [part.model_dump() for part in result.parts]
     except Exception as e:
         print(f"⚠️ Structured output failed: {e}")
+        import traceback
+        traceback.print_exc()
         assembly_steps = []
-        assembly_parts = []
     
     return {
         "assembly_manual_prompts": assembly_steps,
-        "assembly_manual_parts": assembly_parts,
     }
 
 
@@ -770,74 +753,66 @@ def node_assembly_manual_generator(state: AgentState) -> Dict[str, Any]:
     """
     Assembly Manual Generator Node
     
-    1. Generates "Clean" images for the Global Parts List.
-    2. Composites the "Parts Overview" image.
-    3. Generates "Action" images for Steps (ghosted action).
-    4. Composites the Step images.
+    Generates full step-by-step instructional images directly using Flux.
+    Uses the final product image and selected items as context.
     """
     from app.services.flux_service import generate_image
     
     assembly_steps = state.get("assembly_manual_prompts", [])
-    assembly_parts = state.get("assembly_manual_parts", [])
     
-    if not assembly_steps and not assembly_parts:
+    if not assembly_steps:
         return {
             "assembly_manual_images": [],
-            "parts_overview_image": None,
         }
     
     # Material image URL (same as used for product image)
     material_image_url = state.get("material_image")
     
-    # 1. Identify unique layers to generate
-    # Key: "ItemName_Prompt", Value: Image.Image
-    unique_layer_prompts = {} 
+    # Final product image URL - use as context for all steps
+    final_image_url = state.get("final_image_url")
     
-    for step in assembly_steps:
-        layers = step.get("layers", [])
-        for layer in layers:
-            item_name = layer.get("item_name", "")
-            prompt = layer.get("layer_prompt", "")
-            key = f"{item_name}_{prompt}"
-            
-            # Only generate if we don't have it (it might be same as clean part)
-            if key not in layer_images:
-                unique_action_prompts[key] = prompt
-
-    # 5. Generate action images
-    print(f"📸 Generating {len(unique_action_prompts)} action components...")
-    
-    for key, prompt in unique_action_prompts.items():
-        seed = int(hashlib.md5(key.encode()).hexdigest()[:8], 16) % (2**31)
-        image_url = generate_image(
-            prompt=prompt,
-            material_image_url=material_image_url,
-            width=1024,
-            height=1024,
-            seed=seed,
-            model_name="flux-2-flex",
-        )
-        if image_url:
-            try:
-                response = requests.get(image_url)
-                img = Image.open(BytesIO(response.content))
-                layer_images[key] = img
-            except Exception:
-                pass
-
-    # 6. Composite Steps
+    # Generate full step images directly
+    print(f"📸 Generating {len(assembly_steps)} assembly step images...")
     assembly_images = []
+    
     for i, step in enumerate(assembly_steps):
-        print(f"🎨 Compositing step {i+1}...")
+        print(f"📸 Generating step {i+1}/{len(assembly_steps)}: {step.get('instruction', '')[:50]}...")
         try:
-            instruction = step.get("instruction", "")
-            composite_b64 = composite_layers(step.get("layers", []), layer_images, title=instruction)
-            assembly_images.append(composite_b64)
+            step_prompt = step.get("step_prompt", "")
+            if not step_prompt:
+                print(f"⚠️ No step_prompt for step {i+1}, skipping")
+                assembly_images.append("")
+                continue
+            
+            # Use seed based on step index for consistency
+            seed = int(hashlib.md5(f"step_{i}".encode()).hexdigest()[:8], 16) % (2**31)
+            
+            # Generate full step image directly
+            # The step_prompt already references the final product style from the prompt engineer
+            # We use materials as the base image for consistency
+            image_url = generate_image(
+                prompt=step_prompt,
+                material_image_url=material_image_url,
+                previous_image_url=None,  # Generate fresh instructional diagram, not edit
+                width=1024,
+                height=1024,
+                seed=seed,
+                model_name="flux-2-flex",
+            )
+            
+            if image_url:
+                assembly_images.append(image_url)
+                print(f"✅ Generated step {i+1} image")
+            else:
+                print(f"❌ Failed to generate step {i+1} image")
+                assembly_images.append("")
+                
         except Exception as e:
-            print(f"❌ Composition failed for step {i+1}: {e}")
+            print(f"❌ Error generating step {i+1}: {e}")
+            import traceback
+            traceback.print_exc()
             assembly_images.append("")
-
+    
     return {
         "assembly_manual_images": assembly_images,
-        "parts_overview_image": parts_overview_b64,
     }

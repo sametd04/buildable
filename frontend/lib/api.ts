@@ -8,6 +8,7 @@ export interface BuildRequest {
   user_query: string
   previous_style_description?: string
   previous_image_url?: string
+  previous_image_urls?: string[]
   conversation_history?: Array<{ role: string; content: string }>
   conversation_data?: Record<string, any>
   skip_conversation?: boolean
