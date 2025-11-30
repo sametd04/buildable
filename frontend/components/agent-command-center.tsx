@@ -8,6 +8,8 @@ import { Badge } from "@/components/ui/badge"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import { Terminal, Zap, Palette, FileText, Package, Wand2, Image, CheckCircle2, Loader2 } from "lucide-react"
 import { useState } from "react"
+import ReactMarkdown from "react-markdown"
+import remarkGfm from "remark-gfm"
 
 interface Message {
   id: string
@@ -22,18 +24,32 @@ export function AgentCommandCenter({
   isThinking,
   messageRef,
   selectedItemsCount,
+  isInConversation = false,
+  onSkipConversation,
 }: {
   messages: Message[]
-  onBuild: (prompt: string) => void
+  onBuild: (prompt: string, skipConversation?: boolean) => void
   isThinking: boolean
   messageRef: React.RefObject<HTMLDivElement | null>
   selectedItemsCount: number
+  isInConversation?: boolean
+  onSkipConversation?: () => void
 }) {
   const [inputValue, setInputValue] = useState("")
 
   const handleBuildClick = () => {
     if (inputValue.trim()) {
-      onBuild(inputValue)
+      onBuild(inputValue, false)
+      setInputValue("")
+    }
+  }
+
+  const handleSkipConversation = () => {
+    if (onSkipConversation) {
+      onSkipConversation()
+    } else {
+      // If no handler provided, call onBuild with skip flag
+      onBuild(inputValue || "", true)
       setInputValue("")
     }
   }
@@ -75,115 +91,116 @@ export function AgentCommandCenter({
                 {msg.type === "user" ? (
                   /* User Message */
                   <div className="bg-muted border border-border rounded p-3 max-w-xs text-xs">
-                    <p className="text-foreground">{msg.content}</p>
+                    <div className="text-foreground prose prose-sm dark:prose-invert max-w-none prose-headings:text-foreground prose-p:text-foreground prose-strong:text-foreground prose-code:text-foreground prose-pre:bg-muted prose-pre:text-foreground">
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
+                    </div>
                   </div>
                 ) : msg.steps && msg.steps.length > 0 ? (
                   /* Agent Message with Steps */
                   <div className="w-full">
                     <Accordion type="single" collapsible defaultValue={isLatest ? `agent-${msg.id}` : undefined} className="w-full">
-                    <AccordionItem value={`agent-${msg.id}`} className="border-border">
-                      <AccordionTrigger className="py-2 text-xs hover:no-underline">
-                        <div className="flex items-center gap-2">
-                          <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-                          <span className="font-mono text-foreground">
-                            {msg.content || "Agent Processing"}
-                          </span>
-                        </div>
-                      </AccordionTrigger>
-                      <AccordionContent className="bg-card rounded border border-border p-4 mt-2 space-y-3">
-                        {/* Progress Bar */}
-                        {msg.steps && msg.steps.length > 0 && (() => {
-                          const completedCount = msg.steps.filter(s => 
-                            s.startsWith('✓') || s.includes('completed') || s.includes('generated') || s.includes('created') || s.includes('selected')
-                          ).length
-                          const failedCount = msg.steps.filter(s => s.startsWith('✗') || s.toLowerCase().includes('error')).length
-                          
-                          return (
-                            <div className="mb-4">
-                              <div className="flex justify-between text-xs mb-2">
-                                <span className="text-muted-foreground">Progress</span>
-                                <span className="text-foreground font-semibold">
-                                  {completedCount} / {msg.steps.length}
-                                  {failedCount > 0 && <span className="text-red-500 ml-1">({failedCount} failed)</span>}
-                                </span>
+                      <AccordionItem value={`agent-${msg.id}`} className="border-border">
+                        <AccordionTrigger className="py-2 text-xs hover:no-underline">
+                          <div className="flex items-center gap-2">
+                            <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+                            <div className="font-mono text-foreground prose prose-sm dark:prose-invert max-w-none prose-headings:text-foreground prose-p:text-foreground prose-strong:text-foreground prose-code:text-foreground prose-p:inline">
+                              <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content || "Agent Processing"}</ReactMarkdown>
+                            </div>
+                          </div>
+                        </AccordionTrigger>
+                        <AccordionContent className="bg-card rounded border border-border p-4 mt-2 space-y-3">
+                          {/* Progress Bar */}
+                          {msg.steps && msg.steps.length > 0 && (() => {
+                            const completedCount = msg.steps.filter(s =>
+                              s.startsWith('✓') || s.includes('completed') || s.includes('generated') || s.includes('created') || s.includes('selected')
+                            ).length
+                            const failedCount = msg.steps.filter(s => s.startsWith('✗') || s.toLowerCase().includes('error')).length
+
+                            return (
+                              <div className="mb-4">
+                                <div className="flex justify-between text-xs mb-2">
+                                  <span className="text-muted-foreground">Progress</span>
+                                  <span className="text-foreground font-semibold">
+                                    {completedCount} / {msg.steps.length}
+                                    {failedCount > 0 && <span className="text-red-500 ml-1">({failedCount} failed)</span>}
+                                  </span>
+                                </div>
+                                <div className="h-2 bg-muted rounded-full overflow-hidden">
+                                  <div
+                                    className={`h-full transition-all duration-500 ease-out ${failedCount > 0 ? 'bg-red-500' : 'bg-primary'
+                                      }`}
+                                    style={{
+                                      width: `${(completedCount / msg.steps.length) * 100}%`
+                                    }}
+                                  />
+                                </div>
                               </div>
-                              <div className="h-2 bg-muted rounded-full overflow-hidden">
-                                <div 
-                                  className={`h-full transition-all duration-500 ease-out ${
-                                    failedCount > 0 ? 'bg-red-500' : 'bg-primary'
+                            )
+                          })()}
+
+                          {/* Steps */}
+                          {msg.steps?.map((step, idx) => {
+                            const isComplete = step.startsWith('✓') ||
+                              step.includes('completed') ||
+                              step.includes('generated') ||
+                              step.includes('created') ||
+                              step.includes('selected')
+                            const isFailed = step.startsWith('✗') || step.toLowerCase().includes('error')
+                            const isInProgress = step.startsWith('⏳') || step.includes('...')
+
+                            // Determine icon based on step content
+                            let StepIcon = Terminal
+                            if (step.includes('Style')) StepIcon = Palette
+                            else if (step.includes('Planner') || step.includes('plan')) StepIcon = FileText
+                            else if (step.includes('Inventory') || step.includes('materials')) StepIcon = Package
+                            else if (step.includes('Prompt')) StepIcon = Wand2
+                            else if (step.includes('Image') || step.includes('Flux')) StepIcon = Image
+
+                            return (
+                              <div
+                                key={idx}
+                                className={`flex items-start gap-3 p-2 rounded transition-all ${isComplete ? 'bg-primary/10' : isFailed ? 'bg-red-500/10' : 'bg-muted/50'
                                   }`}
-                                  style={{ 
-                                    width: `${(completedCount / msg.steps.length) * 100}%` 
-                                  }}
-                                />
+                              >
+                                {/* Icon/Status */}
+                                <div className="flex-shrink-0 mt-0.5">
+                                  {isComplete ? (
+                                    <CheckCircle2 className="w-4 h-4 text-primary animate-in zoom-in duration-300" />
+                                  ) : isFailed ? (
+                                    <div className="w-4 h-4 rounded-full bg-red-500 flex items-center justify-center">
+                                      <span className="text-white text-xs">✗</span>
+                                    </div>
+                                  ) : isInProgress ? (
+                                    <Loader2 className="w-4 h-4 text-primary animate-spin" />
+                                  ) : (
+                                    <StepIcon className="w-4 h-4 text-muted-foreground" />
+                                  )}
+                                </div>
+
+                                {/* Step Content */}
+                                <div className="flex-1 min-w-0">
+                                  <p className={`text-xs leading-relaxed ${isComplete ? 'text-foreground font-medium' :
+                                    isFailed ? 'text-red-500' :
+                                      'text-muted-foreground'
+                                    }`}>
+                                    {step.replace(/^[✓✗⏳]\s*/, '')}
+                                  </p>
+                                </div>
                               </div>
-                            </div>
-                          )
-                        })()}
-                        
-                        {/* Steps */}
-                        {msg.steps?.map((step, idx) => {
-                          const isComplete = step.startsWith('✓') || 
-                                           step.includes('completed') || 
-                                           step.includes('generated') || 
-                                           step.includes('created') || 
-                                           step.includes('selected')
-                          const isFailed = step.startsWith('✗') || step.toLowerCase().includes('error')
-                          const isInProgress = step.startsWith('⏳') || step.includes('...')
-                          
-                          // Determine icon based on step content
-                          let StepIcon = Terminal
-                          if (step.includes('Style')) StepIcon = Palette
-                          else if (step.includes('Planner') || step.includes('plan')) StepIcon = FileText
-                          else if (step.includes('Inventory') || step.includes('materials')) StepIcon = Package
-                          else if (step.includes('Prompt')) StepIcon = Wand2
-                          else if (step.includes('Image') || step.includes('Flux')) StepIcon = Image
-                          
-                          return (
-                            <div 
-                              key={idx} 
-                              className={`flex items-start gap-3 p-2 rounded transition-all ${
-                                isComplete ? 'bg-primary/10' : isFailed ? 'bg-red-500/10' : 'bg-muted/50'
-                              }`}
-                            >
-                              {/* Icon/Status */}
-                              <div className="flex-shrink-0 mt-0.5">
-                                {isComplete ? (
-                                  <CheckCircle2 className="w-4 h-4 text-primary animate-in zoom-in duration-300" />
-                                ) : isFailed ? (
-                                  <div className="w-4 h-4 rounded-full bg-red-500 flex items-center justify-center">
-                                    <span className="text-white text-xs">✗</span>
-                                  </div>
-                                ) : isInProgress ? (
-                                  <Loader2 className="w-4 h-4 text-primary animate-spin" />
-                                ) : (
-                                  <StepIcon className="w-4 h-4 text-muted-foreground" />
-                                )}
-                              </div>
-                              
-                              {/* Step Content */}
-                              <div className="flex-1 min-w-0">
-                                <p className={`text-xs leading-relaxed ${
-                                  isComplete ? 'text-foreground font-medium' : 
-                                  isFailed ? 'text-red-500' : 
-                                  'text-muted-foreground'
-                                }`}>
-                                  {step.replace(/^[✓✗⏳]\s*/, '')}
-                                </p>
-                              </div>
-                            </div>
-                          )
-                        })}
-                      </AccordionContent>
-                    </AccordionItem>
-                  </Accordion>
-                </div>
-              ) : (
-                /* Agent Message without Steps - just show content */
-                <div className="bg-muted border border-border rounded p-3 text-xs w-full">
-                  <p className="text-foreground">{msg.content}</p>
-                </div>
-              )}
+                            )
+                          })}
+                        </AccordionContent>
+                      </AccordionItem>
+                    </Accordion>
+                  </div>
+                ) : (
+                  /* Agent Message without Steps - just show content */
+                  <div className="bg-muted border border-border rounded p-3 text-xs w-full">
+                    <div className="text-foreground prose prose-sm dark:prose-invert max-w-none prose-headings:text-foreground prose-p:text-foreground prose-strong:text-foreground prose-code:text-foreground prose-pre:bg-muted prose-pre:text-foreground prose-ul:text-foreground prose-ol:text-foreground prose-li:text-foreground prose-a:text-primary prose-blockquote:text-foreground">
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
+                    </div>
+                  </div>
+                )}
               </div>
             )
           })
@@ -218,19 +235,31 @@ export function AgentCommandCenter({
       {/* Input Area */}
       <div className="border-t border-border pt-3 space-y-2">
         <Input
-          placeholder="Describe your assembly..."
+          placeholder={isInConversation ? "Answer the question..." : "Describe your assembly..."}
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && handleBuildClick()}
           className="h-8 bg-input border-border text-xs"
         />
-        <Button
-          onClick={handleBuildClick}
-          disabled={!inputValue.trim() || isThinking}
-          className="w-full h-8 font-semibold text-xs"
-        >
-          Build
-        </Button>
+        <div className="flex gap-2">
+          {isInConversation && (
+            <Button
+              onClick={handleSkipConversation}
+              disabled={isThinking}
+              variant="outline"
+              className="flex-1 h-8 font-semibold text-xs"
+            >
+              Skip Conversation
+            </Button>
+          )}
+          <Button
+            onClick={handleBuildClick}
+            disabled={!inputValue.trim() || isThinking}
+            className={isInConversation ? "flex-1 h-8 font-semibold text-xs" : "w-full h-8 font-semibold text-xs"}
+          >
+            {isInConversation ? "Send" : "Build"}
+          </Button>
+        </div>
       </div>
     </div>
   )

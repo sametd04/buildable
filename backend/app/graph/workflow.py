@@ -3,12 +3,32 @@ from typing import Literal
 from langgraph.graph import StateGraph, END
 from app.graph.state import AgentState
 from app.graph.nodes import (
+    node_conversation_agent,
     node_style_optimizer,
     node_planner,
     node_inventory_clerk,
     node_prompt_engineer,
     node_flux_generator,
 )
+
+
+def check_conversation_status(state: AgentState) -> Literal["workflow", "conversation"]:
+    """
+    Conditional function to determine if we should proceed to workflow or continue conversation.
+    
+    Logic:
+    - If ready_for_workflow is True or skip_conversation is True: proceed to workflow
+    - Otherwise: continue conversation
+    
+    Args:
+        state: Current AgentState
+        
+    Returns:
+        Next node name
+    """
+    if state.get("ready_for_workflow", False) or state.get("skip_conversation", False):
+        return "workflow"  # Proceed to style optimizer
+    return "conversation"  # Continue conversation
 
 
 def check_inventory_status(state: AgentState) -> Literal["agent_c", "agent_a", "end_fail"]:
@@ -74,9 +94,9 @@ def create_workflow() -> StateGraph:
     """
     Create and compile the LangGraph workflow with feedback loop.
     
-    The workflow includes a feedback loop:
-    START -> Style Optimizer -> Planner -> Inventory Clerk -> (conditional) -> Prompt Engineer -> 
-    Flux Generator -> END
+    The workflow includes:
+    START -> Conversation Agent -> (conditional) -> Style Optimizer -> Planner -> Inventory Clerk -> 
+    (conditional) -> Prompt Engineer -> Flux Generator -> END
                                                                                 |
                                                                                 v (if failed)
                                                                             Planner (retry)
@@ -91,6 +111,7 @@ def create_workflow() -> StateGraph:
     workflow = StateGraph(AgentState)
     
     # Add nodes
+    workflow.add_node("conversation_agent", node_conversation_agent)
     workflow.add_node("style_optimizer", node_style_optimizer)
     workflow.add_node("planner", node_planner)
     workflow.add_node("inventory_clerk", node_inventory_clerk)
@@ -102,7 +123,18 @@ def create_workflow() -> StateGraph:
     workflow.add_node("set_failure_status", set_failure_status)
     
     # Define the flow
-    workflow.set_entry_point("style_optimizer")
+    workflow.set_entry_point("conversation_agent")
+    
+    # Conditional edge from conversation_agent
+    workflow.add_conditional_edges(
+        "conversation_agent",
+        check_conversation_status,
+        {
+            "workflow": "style_optimizer",  # Proceed to workflow
+            "conversation": END,  # Stop and wait for user input (conversation mode)
+        }
+    )
+    
     workflow.add_edge("style_optimizer", "planner")
     workflow.add_edge("planner", "inventory_clerk")
     
