@@ -121,21 +121,27 @@ async def stream_conversation_response(
         # First message - add system prompt
         system_prompt = f"""You are a friendly and helpful design consultant helping users create custom DIY furniture and structures.
 
-Your goal is to have a natural conversation to gather the following information:
+CRITICAL: You MUST always ask about ALL of the following fields before calling the RequiredData tool. Ask about them systematically, one or two at a time:
+
 1. **Use Case & Purpose**: What will this be used for? (e.g., workspace, storage, decoration)
 2. **Dimensions & Size**: Approximate size requirements (e.g., "fits in a corner", "desk height", "shelf width")
 3. **Style Preferences**: Aesthetic style, mood, colors, textures (e.g., industrial, minimalist, rustic, modern)
-4. **Material Preferences**: Any specific material preferences or constraints (e.g., wood type, metal finish) - optional
-5. **Personalization**: Any personal touches or specific requirements (e.g., "needs to match my existing furniture") - optional
-6. **Constraints**: Any space, budget, or functional constraints - optional
+4. **Material Preferences**: Any specific material preferences or constraints (e.g., wood type, metal finish) - optional but still ask
+5. **Personalization**: Any personal touches or specific requirements (e.g., "needs to match my existing furniture") - optional but still ask
+6. **Constraints**: Any space, budget, or functional constraints - optional but still ask
 
-Keep the conversation natural and friendly. Ask 1-2 questions at a time. Don't be overwhelming.
-
-IMPORTANT: Once you have gathered enough information to fill in the required fields (use_case, dimensions, style_preferences), you should call the RequiredData tool with the information you've collected. The material_preferences, personalization, and constraints fields are optional and can be left empty if not mentioned.
+IMPORTANT RULES:
+- You MUST ask about all 6 fields, even if some are optional
+- Ask 1-2 questions at a time in a natural, friendly way
+- Don't be overwhelming - keep it conversational
+- **CRITICAL: You CANNOT call the RequiredData tool on the first message. You MUST ask at least one question first, even if the user's request seems complete.**
+- Only call the RequiredData tool AFTER you have asked about all 6 fields and received responses
+- For optional fields (4-6), if the user says "none" or "no preference", you can leave them empty in the tool call
+- Required fields (1-3) must have actual answers from the user
 
 User's initial request: {user_query}
 
-Start the conversation by asking 1-2 clarifying questions to better understand their needs."""
+**You MUST start by asking questions. Do NOT call the RequiredData tool yet - ask about the first 1-2 fields to begin gathering information.**"""
         messages.append(SystemMessage(content=system_prompt))
         messages.append(HumanMessage(content=user_query))
     else:
@@ -160,36 +166,174 @@ Start the conversation by asking 1-2 clarifying questions to better understand t
     try:
         async for chunk in llm_with_tool.astream(messages):
             all_chunks.append(chunk)
-            # Handle content chunks
-            if hasattr(chunk, "content") and chunk.content:
-                full_content += chunk.content
+            # Handle content chunks - content might be string or empty
+            chunk_content = ""
+            if hasattr(chunk, "content"):
+                if isinstance(chunk.content, str):
+                    chunk_content = chunk.content
+                elif chunk.content:
+                    # Content might be a list or other type
+                    chunk_content = str(chunk.content)
+            
+            if chunk_content:
+                full_content += chunk_content
                 # Send chunk to client
-                yield f"data: {json.dumps({'type': 'chunk', 'content': chunk.content})}\n\n"
+                yield f"data: {json.dumps({'type': 'chunk', 'content': chunk_content})}\n\n"
         
-        # After streaming is complete, check all chunks for tool calls
-        # Tool calls might be in any chunk, but typically in the last one
-        for chunk in reversed(all_chunks):
-            if hasattr(chunk, "tool_calls") and chunk.tool_calls:
-                for tool_call in chunk.tool_calls:
-                    if tool_call.get("name") == "RequiredData" or "RequiredData" in str(tool_call):
-                        has_tool_call = True
-                        args = tool_call.get("args", {})
-                        conversation_data = {
-                            "use_case": args.get("use_case", ""),
-                            "dimensions": args.get("dimensions", ""),
-                            "style_preferences": args.get("style_preferences", ""),
-                            "material_preferences": args.get("material_preferences", ""),
-                            "personalization": args.get("personalization", ""),
-                            "constraints": args.get("constraints", ""),
-                        }
+        # After streaming is complete, reconstruct the full message to get content and check for tool calls
+        # VALIDATION: Reject tool calls if this is the first message (no conversation history)
+        # The agent MUST ask at least one question before calling the tool
+        is_first_message = len(conversation_history) == 0
+        
+        # Reconstruct the full message from chunks to get complete content and tool calls
+        from langchain_core.messages import AIMessage
+        reconstructed_message = None
+        
+        if all_chunks:
+            try:
+                # Start with the first chunk
+                reconstructed_message = all_chunks[0]
+                # Merge subsequent chunks
+                for chunk in all_chunks[1:]:
+                    if hasattr(reconstructed_message, "merge"):
+                        try:
+                            reconstructed_message = reconstructed_message.merge(chunk)
+                        except:
+                            # If merge fails, manually combine content
+                            if hasattr(chunk, "content") and chunk.content:
+                                if hasattr(reconstructed_message, "content"):
+                                    if isinstance(reconstructed_message.content, str):
+                                        reconstructed_message.content += (chunk.content if isinstance(chunk.content, str) else str(chunk.content))
+                                    elif isinstance(reconstructed_message.content, list):
+                                        if isinstance(chunk.content, list):
+                                            reconstructed_message.content.extend(chunk.content)
+                                        else:
+                                            reconstructed_message.content.append(chunk.content)
+            except Exception as e:
+                # If reconstruction fails, we'll use the accumulated full_content
+                pass
+        
+        # Extract content from reconstructed message if we didn't get it from chunks
+        # This is important because when tool calls are made, content might not stream properly
+        if not full_content and reconstructed_message:
+            if hasattr(reconstructed_message, "content"):
+                if isinstance(reconstructed_message.content, str):
+                    full_content = reconstructed_message.content
+                elif isinstance(reconstructed_message.content, list):
+                    # Extract text from content blocks
+                    text_parts = []
+                    for item in reconstructed_message.content:
+                        if isinstance(item, dict) and "text" in item:
+                            text_parts.append(item["text"])
+                        elif isinstance(item, str):
+                            text_parts.append(item)
+                    full_content = "".join(text_parts)
+        
+        # Check for tool calls in reconstructed message or chunks
+        # CRITICAL: If this is the first message, we MUST reject any tool calls
+        found_tool_call_in_message = False
+        if reconstructed_message and hasattr(reconstructed_message, "tool_calls") and reconstructed_message.tool_calls:
+            found_tool_call_in_message = True
+            for tool_call in reconstructed_message.tool_calls:
+                if tool_call.get("name") == "RequiredData" or "RequiredData" in str(tool_call):
+                    # Reject tool call if this is the first message - agent must ask questions first
+                    if is_first_message:
+                        # Don't accept the tool call - force the agent to ask questions
+                        has_tool_call = False
                         break
-                if has_tool_call:
+                    
+                    # Only accept tool call if NOT first message
+                    has_tool_call = True
+                    args = tool_call.get("args", {})
+                    conversation_data = {
+                        "use_case": args.get("use_case", ""),
+                        "dimensions": args.get("dimensions", ""),
+                        "style_preferences": args.get("style_preferences", ""),
+                        "material_preferences": args.get("material_preferences", ""),
+                        "personalization": args.get("personalization", ""),
+                        "constraints": args.get("constraints", ""),
+                    }
                     break
         
+        # Also check chunks as fallback (only if we didn't find one in reconstructed message)
+        if not found_tool_call_in_message or (found_tool_call_in_message and is_first_message):
+            for chunk in reversed(all_chunks):
+                if hasattr(chunk, "tool_calls") and chunk.tool_calls:
+                    for tool_call in chunk.tool_calls:
+                        if tool_call.get("name") == "RequiredData" or "RequiredData" in str(tool_call):
+                            # Reject tool call if this is the first message - agent must ask questions first
+                            if is_first_message:
+                                # Don't accept the tool call - force the agent to ask questions
+                                has_tool_call = False
+                                break
+                            
+                            # Only accept tool call if NOT first message
+                            has_tool_call = True
+                            args = tool_call.get("args", {})
+                            conversation_data = {
+                                "use_case": args.get("use_case", ""),
+                                "dimensions": args.get("dimensions", ""),
+                                "style_preferences": args.get("style_preferences", ""),
+                                "material_preferences": args.get("material_preferences", ""),
+                                "personalization": args.get("personalization", ""),
+                                "constraints": args.get("constraints", ""),
+                            }
+                            break
+                    if has_tool_call or (is_first_message and hasattr(chunk, "tool_calls")):
+                        break
+        
+        # IMPORTANT: If we rejected a tool call on first message, we still need to return the content
+        # The content should have been streamed, but if not, try to get it from reconstructed message
+        # Also, if content is still empty, make a non-streaming call to get the full response
+        if not full_content and reconstructed_message:
+            # Try one more time to extract content
+            if hasattr(reconstructed_message, "content"):
+                if isinstance(reconstructed_message.content, str) and reconstructed_message.content:
+                    full_content = reconstructed_message.content
+                elif isinstance(reconstructed_message.content, list):
+                    text_parts = []
+                    for item in reconstructed_message.content:
+                        if isinstance(item, dict) and "text" in item:
+                            text_parts.append(item["text"])
+                        elif isinstance(item, str):
+                            text_parts.append(item)
+                    full_content = "".join(text_parts)
+        
+        # If we still don't have content and this is the first message, make a non-streaming call
+        # This is a fallback to ensure we get the content even if streaming didn't capture it
+        if not full_content and is_first_message:
+            try:
+                # Make a non-streaming call to get the full response
+                response = llm_with_tool.invoke(messages)
+                if hasattr(response, "content") and response.content:
+                    if isinstance(response.content, str):
+                        full_content = response.content
+                    elif isinstance(response.content, list):
+                        text_parts = []
+                        for item in response.content:
+                            if isinstance(item, dict) and "text" in item:
+                                text_parts.append(item["text"])
+                            elif isinstance(item, str):
+                                text_parts.append(item)
+                        full_content = "".join(text_parts)
+                    
+                    # If we got content from the fallback, send it as a chunk
+                    if full_content:
+                        yield f"data: {json.dumps({'type': 'chunk', 'content': full_content})}\n\n"
+            except Exception as e:
+                # If fallback fails, continue with empty content
+                pass
+        
         # Send final message
-        if has_tool_call:
+        # CRITICAL: On first message, ALWAYS return ready_for_workflow: False (agent must ask questions first)
+        if is_first_message:
+            # First message - always stay in conversation, even if tool call was attempted
+            yield f"data: {json.dumps({'type': 'complete', 'content': full_content, 'ready_for_workflow': False})}\n\n"
+        elif has_tool_call:
+            # Not first message and we have a valid tool call - proceed to workflow
             yield f"data: {json.dumps({'type': 'complete', 'content': full_content, 'ready_for_workflow': True, 'conversation_data': conversation_data})}\n\n"
         else:
+            # No tool call - stay in conversation
             yield f"data: {json.dumps({'type': 'complete', 'content': full_content, 'ready_for_workflow': False})}\n\n"
     
     except Exception as e:
@@ -228,12 +372,17 @@ async def build(request: BuildRequest) -> BuildResponse:
     """
     try:
         # Initialize state (no need to load inventory into memory)
+        # If skip_conversation is True and user_query is empty, use a default
+        user_query = request.user_query.strip() if request.user_query else ""
+        if request.skip_conversation and not user_query:
+            user_query = "Generate a design based on available materials"
+        
         initial_state: AgentState = {
-            "user_query": request.user_query,
+            "user_query": user_query,
             "conversation_history": request.conversation_history or [],
             "conversation_data": request.conversation_data or {},
             "skip_conversation": request.skip_conversation,
-            "ready_for_workflow": False,
+            "ready_for_workflow": request.skip_conversation,  # If skipping, we're ready
             "style_description": request.previous_style_description or "",  # Use previous or empty
             "construction_plan": None,
             "selected_item_ids": [],

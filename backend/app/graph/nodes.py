@@ -66,24 +66,54 @@ def node_conversation_agent(state: AgentState) -> Dict[str, Any]:
         # First message - add system prompt
         system_prompt = f"""You are a friendly and helpful design consultant helping users create custom DIY furniture and structures.
 
-Your goal is to have a natural conversation to gather the following information:
+CRITICAL: You MUST always ask about ALL of the following fields before calling the RequiredData tool. Ask about them systematically, one or two at a time:
+
 1. **Use Case & Purpose**: What will this be used for? (e.g., workspace, storage, decoration)
 2. **Dimensions & Size**: Approximate size requirements (e.g., "fits in a corner", "desk height", "shelf width")
 3. **Style Preferences**: Aesthetic style, mood, colors, textures (e.g., industrial, minimalist, rustic, modern)
-4. **Material Preferences**: Any specific material preferences or constraints (e.g., wood type, metal finish) - optional
-5. **Personalization**: Any personal touches or specific requirements (e.g., "needs to match my existing furniture") - optional
-6. **Constraints**: Any space, budget, or functional constraints - optional
+4. **Material Preferences**: Any specific material preferences or constraints (e.g., wood type, metal finish) - optional but still ask
+5. **Personalization**: Any personal touches or specific requirements (e.g., "needs to match my existing furniture") - optional but still ask
+6. **Constraints**: Any space, budget, or functional constraints - optional but still ask
 
-Keep the conversation natural and friendly. Ask 1-2 questions at a time. Don't be overwhelming.
-
-IMPORTANT: Once you have gathered enough information to fill in the required fields (use_case, dimensions, style_preferences), you should call the RequiredData tool with the information you've collected. The material_preferences, personalization, and constraints fields are optional and can be left empty if not mentioned.
+IMPORTANT RULES:
+- You MUST ask about all 6 fields, even if some are optional
+- Ask 1-2 questions at a time in a natural, friendly way
+- Don't be overwhelming - keep it conversational
+- **CRITICAL: You CANNOT call the RequiredData tool on the first message. You MUST ask at least one question first, even if the user's request seems complete.**
+- Only call the RequiredData tool AFTER you have asked about all 6 fields and received responses
+- For optional fields (4-6), if the user says "none" or "no preference", you can leave them empty in the tool call
+- Required fields (1-3) must have actual answers from the user
 
 User's initial request: {user_query}
 
-Start the conversation by asking 1-2 clarifying questions to better understand their needs."""
+**You MUST start by asking questions. Do NOT call the RequiredData tool yet - ask about the first 1-2 fields to begin gathering information.**"""
         messages.append(SystemMessage(content=system_prompt))
         messages.append(HumanMessage(content=user_query))
     else:
+        # Convert existing conversation history to LangChain messages
+        # Add system prompt to remind agent of the fields to ask about
+        system_prompt = """You are a friendly and helpful design consultant helping users create custom DIY furniture and structures.
+
+CRITICAL: You MUST always ask about ALL of the following fields before calling the RequiredData tool. Ask about them systematically, one or two at a time:
+
+1. **Use Case & Purpose**: What will this be used for? (e.g., workspace, storage, decoration)
+2. **Dimensions & Size**: Approximate size requirements (e.g., "fits in a corner", "desk height", "shelf width")
+3. **Style Preferences**: Aesthetic style, mood, colors, textures (e.g., industrial, minimalist, rustic, modern)
+4. **Material Preferences**: Any specific material preferences or constraints (e.g., wood type, metal finish) - optional but still ask
+5. **Personalization**: Any personal touches or specific requirements (e.g., "needs to match my existing furniture") - optional but still ask
+6. **Constraints**: Any space, budget, or functional constraints - optional but still ask
+
+IMPORTANT RULES:
+- You MUST ask about all 6 fields, even if some are optional
+- Ask 1-2 questions at a time in a natural, friendly way
+- Don't be overwhelming - keep it conversational
+- Only call the RequiredData tool AFTER you have asked about all 6 fields and received responses
+- For optional fields (4-6), if the user says "none" or "no preference", you can leave them empty in the tool call
+- Required fields (1-3) must have actual answers from the user
+
+Continue the conversation by asking about the remaining fields you haven't covered yet."""
+        messages.append(SystemMessage(content=system_prompt))
+        
         # Convert existing conversation history to LangChain messages
         for msg in conversation_history:
             role = msg.get("role", "user")
@@ -117,9 +147,20 @@ Start the conversation by asking 1-2 clarifying questions to better understand t
     has_tool_call = False
     conversation_data = {}
     
+    # VALIDATION: Reject tool calls if this is the first message (no conversation history)
+    # The agent MUST ask at least one question before calling the tool
+    is_first_message = len(conversation_history) == 0
+    
     if hasattr(response, "tool_calls") and response.tool_calls:
         for tool_call in response.tool_calls:
             if tool_call.get("name") == "RequiredData" or "RequiredData" in str(tool_call):
+                # Reject tool call if this is the first message - agent must ask questions first
+                if is_first_message:
+                    # Remove the tool call from the response and force the agent to ask questions
+                    # The response content should already be asking questions, so we just don't accept the tool call
+                    has_tool_call = False
+                    break
+                
                 has_tool_call = True
                 args = tool_call.get("args", {})
                 conversation_data = {
