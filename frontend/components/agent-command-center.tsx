@@ -58,9 +58,18 @@ export function AgentCommandCenter({
     <div className="flex flex-col h-full p-4 gap-4">
       {/* Header */}
       <div className="border-b border-border pb-3">
-        <h2 className="text-sm font-bold uppercase tracking-widest terminal text-foreground mb-2">
-          Production Pipeline
-        </h2>
+        <div className="mb-3">
+          <img 
+            src="/buildable-logo-black.svg" 
+            alt="Buildable" 
+            className="h-8 w-auto dark:hidden"
+          />
+          <img 
+            src="/buildable-logo-full.svg" 
+            alt="Buildable" 
+            className="h-8 w-auto hidden dark:block"
+          />
+        </div>
         <div className="flex gap-2">
           <Badge variant="secondary" className="text-xs bg-muted border-border">
             <Zap className="w-3 h-3 mr-1" />
