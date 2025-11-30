@@ -59,10 +59,15 @@ class BuildResponse(BaseModel):
         default_factory=list,
         description="List of prompts for each assembly step"
     )
+    assembly_manual_parts: List[Any] = Field(
+        default_factory=list,
+        description="List of unique parts/components"
+    )
     assembly_manual_images: List[str] = Field(
         default_factory=list,
         description="List of image URLs for each assembly step"
     )
+    parts_overview_image: Optional[str] = Field(None, description="URL of the composite parts overview image")
     error: Optional[str] = Field(None, description="Error message if build failed")
 
 
@@ -120,9 +125,13 @@ class GenerateAssemblyManualResponse(BaseModel):
         default_factory=list,
         description="List of prompts for each assembly step"
     )
+    assembly_manual_parts: List[Any] = Field(
+        default_factory=list,
+        description="List of unique parts/components"
+    )
     assembly_manual_images: List[str] = Field(
         default_factory=list,
         description="List of image URLs for each assembly step"
     )
+    parts_overview_image: Optional[str] = Field(None, description="URL of the composite parts overview image")
     error: Optional[str] = Field(None, description="Error message if generation failed")
-

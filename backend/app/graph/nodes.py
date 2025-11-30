@@ -9,13 +9,14 @@ from app.graph.state import AgentState
 from app.services.tools import get_inventory_retriever_tool, get_inventory_retriever
 from app.utils.parse_prompt import load_prompt
 from app.utils.compose_images import compose_images_to_base64, retrieve_srcs_from_mongo
+from math import ceil
 
 # Imports for Image Composition
 from PIL import Image, ImageDraw, ImageFont
 import requests
 from io import BytesIO
 import base64
-import math
+import hashlib
 
 
 # Initialize LLM based on configuration
@@ -568,6 +569,13 @@ class AssemblyLayer(BaseModel):
     layer_prompt: str = Field(description="Prompt to generate ONE representative image of this item on a white background")
 
 
+class AssemblyPart(BaseModel):
+    """A unique part in the global parts list."""
+    item_name: str = Field(description="Name of the item (e.g. 'Leg')")
+    total_quantity: int = Field(description="Total quantity needed for the project")
+    part_prompt: str = Field(description="Prompt for a clean, static, isolated image of this part")
+
+
 class AssemblyStep(BaseModel):
     """One step in the assembly process."""
     instruction: str = Field(description="Text instruction for this step")
@@ -576,9 +584,8 @@ class AssemblyStep(BaseModel):
 
 class AssemblyManualOutput(BaseModel):
     """Pydantic model for structured output from Assembly Manual Prompt Engineer."""
-    steps: List[AssemblyStep] = Field(
-        description="List of assembly steps"
-    )
+    parts: List[AssemblyPart] = Field(description="Global list of unique parts")
+    steps: List[AssemblyStep] = Field(description="List of assembly steps")
 
 
 @observe(name="assembly_manual_prompt_engineer")
@@ -586,8 +593,8 @@ def node_assembly_manual_prompt_engineer(state: AgentState) -> Dict[str, Any]:
     """
     Assembly Manual Prompt Engineer Node
     
-    Receives construction_plan and generates step-by-step prompts using Layered Label + Sample strategy.
-    Updates assembly_manual_prompts in state (now a list of step objects/dicts).
+    Receives construction_plan and generates parts list AND step-by-step prompts.
+    Updates assembly_manual_prompts (steps) and assembly_manual_parts.
     """
     llm = get_llm()
     
@@ -595,6 +602,7 @@ def node_assembly_manual_prompt_engineer(state: AgentState) -> Dict[str, Any]:
     if not construction_plan:
         return {
             "assembly_manual_prompts": [],
+            "assembly_manual_parts": [],
         }
     
     # Get details of selected items for context
@@ -638,19 +646,27 @@ def node_assembly_manual_prompt_engineer(state: AgentState) -> Dict[str, Any]:
         result = chain.invoke({})
         # Convert pydantic objects to dicts for state storage
         assembly_steps = [step.model_dump() for step in result.steps]
+        assembly_parts = [part.model_dump() for part in result.parts]
     except Exception as e:
         print(f"⚠️ Structured output failed: {e}")
         assembly_steps = []
+        assembly_parts = []
     
     return {
         "assembly_manual_prompts": assembly_steps,
+        "assembly_manual_parts": assembly_parts,
     }
 
 
-def composite_layers(step_data: Dict[str, Any], layer_images: Dict[str, Image.Image]) -> str:
+def composite_layers(layers_data: List[Dict], layer_images: Dict[str, Image.Image], title: str = "") -> str:
     """
     Stitches transparent/white-bg item images onto a white 16:9 canvas.
-    Returns base64 encoded image string.
+    Used for both Parts Overview and Steps.
+    
+    Args:
+        layers_data: List of dicts with 'item_name', 'quantity', 'layer_prompt' (or 'part_prompt')
+        layer_images: Dict mapping "item_name_prompt" to PIL Image
+        title: Text to display at top
     """
     # Canvas settings
     CANVAS_WIDTH = 1024
@@ -667,34 +683,39 @@ def composite_layers(step_data: Dict[str, Any], layer_images: Dict[str, Image.Im
         font = ImageFont.load_default()
         small_font = ImageFont.load_default()
         
-    # Instruction text at top
-    instruction = step_data.get("instruction", "")
-    draw.text((20, 20), instruction, fill="black", font=font)
+    # Title text
+    if title:
+        draw.text((20, 20), title, fill="black", font=font)
     
-    layers = step_data.get("layers", [])
-    if not layers:
+    if not layers_data:
         return ""
 
-    # Layout strategy: Horizontal row of groups
-    # Each group has: [Representative Image] + Text "Nx Name"
+    # Layout strategy: Grid or Row
+    num_items = len(layers_data)
     
-    num_groups = len(layers)
-    available_width = CANVAS_WIDTH
-    group_width = available_width // num_groups
-    
-    for i, layer in enumerate(layers):
-        item_name = layer.get("item_name", "Item")
-        quantity = layer.get("quantity", 1)
-        prompt = layer.get("layer_prompt", "")
+    # Simple layout: 1 row if few items, 2 rows if many
+    rows = 1
+    if num_items > 4:
+        rows = 2
         
-        # Get the pre-generated image for this layer
+    cols = ceil(num_items / rows)
+    
+    cell_width = CANVAS_WIDTH // cols
+    cell_height = (CANVAS_HEIGHT - 80) // rows  # Subtract header space
+    
+    for i, layer in enumerate(layers_data):
+        # Handle both Step Layers and Part items
+        item_name = layer.get("item_name", "Item")
+        quantity = layer.get("quantity") or layer.get("total_quantity", 1)
+        prompt = layer.get("layer_prompt") or layer.get("part_prompt", "")
+        
+        # Get the pre-generated image
         layer_key = f"{item_name}_{prompt}"
         img = layer_images.get(layer_key)
         
         if img:
-            # Resize image to fit in group slot (maintain aspect ratio)
-            # Max size: group_width - padding, height - padding
-            target_size = min(group_width - 40, 300)
+            # Resize image to fit in cell slot
+            target_size = min(cell_width - 40, cell_height - 60)
             img_ratio = img.width / img.height
             
             new_width = target_size
@@ -715,21 +736,24 @@ def composite_layers(step_data: Dict[str, Any], layer_images: Dict[str, Image.Im
             
             img_resized = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
             
-            # Calculate position
-            x_center = (i * group_width) + (group_width // 2)
-            y_center = CANVAS_HEIGHT // 2
+            # Calculate position (Grid)
+            row = i // cols
+            col = i % cols
+            
+            x_center = (col * cell_width) + (cell_width // 2)
+            y_base = 80 + (row * cell_height) + (cell_height // 2)
             
             paste_x = x_center - (new_width // 2)
-            paste_y = y_center - (new_height // 2)
+            paste_y = y_base - (new_height // 2)
             
-            # Paste with mask (for transparency)
+            # Paste with mask
             canvas.paste(img_resized, (paste_x, paste_y), img_resized)
             
             # Draw label below
             label = f"{quantity}x {item_name}"
-            bbox = draw.textbbox((0, 0), label, font=font)
+            bbox = draw.textbbox((0, 0), label, font=small_font)
             text_width = bbox[2] - bbox[0]
-            draw.text((x_center - (text_width // 2), paste_y + new_height + 10), label, fill="black", font=font)
+            draw.text((x_center - (text_width // 2), paste_y + new_height + 5), label, fill="black", font=small_font)
             
         else:
             print(f"⚠️ Missing image for layer: {item_name}")
@@ -746,18 +770,20 @@ def node_assembly_manual_generator(state: AgentState) -> Dict[str, Any]:
     """
     Assembly Manual Generator Node
     
-    Receives assembly_manual_prompts (list of step dicts) and generates composite images.
-    1. Identifies all unique layers needed across steps.
-    2. Generates one sample image for each unique layer.
-    3. Composites them for each step using the Label + Sample strategy.
+    1. Generates "Clean" images for the Global Parts List.
+    2. Composites the "Parts Overview" image.
+    3. Generates "Action" images for Steps (ghosted action).
+    4. Composites the Step images.
     """
     from app.services.flux_service import generate_image
-    import hashlib
     
     assembly_steps = state.get("assembly_manual_prompts", [])
-    if not assembly_steps:
+    assembly_parts = state.get("assembly_manual_parts", [])
+    
+    if not assembly_steps and not assembly_parts:
         return {
             "assembly_manual_images": [],
+            "parts_overview_image": None,
         }
     
     # Material image URL (same as used for product image)
@@ -773,18 +799,16 @@ def node_assembly_manual_generator(state: AgentState) -> Dict[str, Any]:
             item_name = layer.get("item_name", "")
             prompt = layer.get("layer_prompt", "")
             key = f"{item_name}_{prompt}"
-            unique_layer_prompts[key] = prompt
             
-    # 2. Generate images for unique layers
-    layer_images = {} # Key: "ItemName_Prompt", Value: PIL Image
+            # Only generate if we don't have it (it might be same as clean part)
+            if key not in layer_images:
+                unique_action_prompts[key] = prompt
+
+    # 5. Generate action images
+    print(f"📸 Generating {len(unique_action_prompts)} action components...")
     
-    print(f"📸 Generating {len(unique_layer_prompts)} unique components...")
-    
-    for key, prompt in unique_layer_prompts.items():
-        # Generate image
-        # Use simple hash for seed
+    for key, prompt in unique_action_prompts.items():
         seed = int(hashlib.md5(key.encode()).hexdigest()[:8], 16) % (2**31)
-        
         image_url = generate_image(
             prompt=prompt,
             material_image_url=material_image_url,
@@ -793,33 +817,27 @@ def node_assembly_manual_generator(state: AgentState) -> Dict[str, Any]:
             seed=seed,
             model_name="flux-2-flex",
         )
-        
         if image_url:
             try:
                 response = requests.get(image_url)
                 img = Image.open(BytesIO(response.content))
                 layer_images[key] = img
-                print(f"✅ Downloaded layer image for: {key}")
-            except Exception as e:
-                print(f"❌ Failed to download/open image {image_url}: {e}")
-        else:
-             print(f"⚠️ Failed to generate image for layer: {key}")
+            except Exception:
+                pass
 
-    # 3. Composite steps
+    # 6. Composite Steps
     assembly_images = []
-    
     for i, step in enumerate(assembly_steps):
-        print(f"🎨 Compositing step {i+1}/{len(assembly_steps)}...")
+        print(f"🎨 Compositing step {i+1}...")
         try:
-            composite_b64 = composite_layers(step, layer_images)
+            instruction = step.get("instruction", "")
+            composite_b64 = composite_layers(step.get("layers", []), layer_images, title=instruction)
             assembly_images.append(composite_b64)
         except Exception as e:
             print(f"❌ Composition failed for step {i+1}: {e}")
-            import traceback
-            traceback.print_exc()
-            # Add placeholder or error
             assembly_images.append("")
 
     return {
         "assembly_manual_images": assembly_images,
+        "parts_overview_image": parts_overview_b64,
     }

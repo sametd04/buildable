@@ -445,7 +445,9 @@ async def generate_assembly_manual(request: GenerateAssemblyManualRequest) -> Ge
             "final_image_url": request.final_image_url,  # Use confirmed product image for consistency
             "material_image": material_image,
             "assembly_manual_prompts": [],
+            "assembly_manual_parts": [],
             "assembly_manual_images": [],
+            "parts_overview_image": None,
             "retry_count": 0,
             "clerk_feedback": None,
             "status": "processing",
@@ -463,7 +465,9 @@ async def generate_assembly_manual(request: GenerateAssemblyManualRequest) -> Ge
         return GenerateAssemblyManualResponse(
             success=True,
             assembly_manual_prompts=state.get("assembly_manual_prompts", []),
+            assembly_manual_parts=state.get("assembly_manual_parts", []),
             assembly_manual_images=state.get("assembly_manual_images", []),
+            parts_overview_image=state.get("parts_overview_image"),
         )
         
     except Exception as e:
