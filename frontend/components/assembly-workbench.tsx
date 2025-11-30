@@ -29,7 +29,7 @@ export function AssemblyWorkbench({
   selectedParents?: number[]
   onParentSelect?: (indices: number[]) => void
   assemblyManualImages?: string[]
-  assemblyManualPrompts?: string[]
+  assemblyManualPrompts?: any[]
   onGenerateAssemblyManual?: () => void
   isGeneratingManual?: boolean
   canGenerateManual?: boolean
@@ -46,6 +46,9 @@ export function AssemblyWorkbench({
             <TabsList className="bg-muted border border-border">
               <TabsTrigger value="hero" className="text-xs">
                 Hero Render
+              </TabsTrigger>
+              <TabsTrigger value="schematic" className="text-xs">
+                Schematic View
               </TabsTrigger>
               <TabsTrigger value="guide" className="text-xs">
                 Assembly Guide
@@ -99,6 +102,18 @@ export function AssemblyWorkbench({
             )}
           </TabsContent>
 
+          <TabsContent value="schematic" className="h-full m-0">
+            <div className="w-full h-full flex items-center justify-center dot-grid">
+              <div className="flex flex-col items-center gap-4 text-muted-foreground">
+                <div className="w-16 h-16 rounded border-2 border-dashed border-border flex items-center justify-center">
+                  <Cpu className="w-8 h-8 text-muted-foreground" />
+                </div>
+                <p className="text-sm font-mono uppercase tracking-widest">SCHEMATIC VIEW</p>
+                <p className="text-xs">Coming soon</p>
+              </div>
+            </div>
+          </TabsContent>
+
           <TabsContent value="guide" className="h-full m-0 overflow-auto">
             {isGeneratingManual ? (
               <div className="w-full h-full flex items-center justify-center">
@@ -143,7 +158,11 @@ export function AssemblyWorkbench({
                         <div className="flex-1 space-y-2">
                           <h3 className="font-semibold">Step {index + 1}</h3>
                           {assemblyManualPrompts[index] && (
-                            <p className="text-sm text-muted-foreground">{assemblyManualPrompts[index]}</p>
+                            <p className="text-sm text-muted-foreground">
+                              {typeof assemblyManualPrompts[index] === 'string'
+                                ? assemblyManualPrompts[index]
+                                : assemblyManualPrompts[index].instruction}
+                            </p>
                           )}
                           <div className="mt-4 rounded-lg overflow-hidden border border-border">
                             <img

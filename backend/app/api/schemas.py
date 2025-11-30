@@ -55,7 +55,7 @@ class BuildResponse(BaseModel):
     )
     flux_prompt: Optional[str] = Field(None, description="The optimized FLUX prompt")
     final_image_url: Optional[str] = Field(None, description="URL of the generated image")
-    assembly_manual_prompts: List[str] = Field(
+    assembly_manual_prompts: List[Any] = Field(
         default_factory=list,
         description="List of prompts for each assembly step"
     )
@@ -116,7 +116,7 @@ class GenerateAssemblyManualRequest(BaseModel):
 class GenerateAssemblyManualResponse(BaseModel):
     """Response schema for the /generate-assembly-manual endpoint."""
     success: bool = Field(..., description="Whether the assembly manual generation was successful")
-    assembly_manual_prompts: List[str] = Field(
+    assembly_manual_prompts: List[Any] = Field(
         default_factory=list,
         description="List of prompts for each assembly step"
     )
