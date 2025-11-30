@@ -43,28 +43,23 @@ def node_style_optimizer(state: AgentState) -> Dict[str, Any]:
     user_query = state.get("user_query")
     
     if previous_style:
+        prompt_variables = {
+            "user_query": user_query,
+            "previous_style": previous_style,
+        }
+        # Load your markdown template
+        rendered_prompt = load_prompt(
+            prompt_name="optimize_user_query_iter", 
+            variables=prompt_variables
+        )
         # Iterative edit - modify existing description
         prompt = ChatPromptTemplate.from_messages([
-            ("system", """You are an expert Design Consultant. You are modifying an existing design based on new user feedback.
-            
-Previous design description:
-{previous_style}
-
-User's new request: {user_query}
-
-Update the design description to incorporate the user's changes while maintaining the overall vision.
-Focus on what changed (mood, texture, color, lighting, etc.)."""),
-            ("human", "Update the design description based on my request."),
+        ("system", rendered_prompt),
         ])
-        
-        response = llm.invoke(prompt.format_messages(
-            previous_style=previous_style,
-            user_query=state["user_query"]
-        ))
+
+        chain = prompt | llm
+        response = chain.invoke({})
     else:
-        # Get user query
-        user_query = state.get("user_query")
-        
         prompt_variables = {
             "user_query": user_query,
         }
@@ -189,6 +184,7 @@ def node_inventory_clerk(state: AgentState) -> Dict[str, Any]:
     construction_plan = state["construction_plan"] or ""
     
     # Use the LLM to extract search terms from the plan
+    #TODO: Put this prompt in a markdown file
     extraction_prompt = ChatPromptTemplate.from_messages([
         ("system", """Extract material and part names from a construction plan. 
         Return a comma-separated list of key terms that would be used to search a hardware catalog.
@@ -243,28 +239,22 @@ def node_inventory_clerk(state: AgentState) -> Dict[str, Any]:
 
     }
     
-    #loaded_prompt = load_prompt("inventory_clerk", prompt_variables)
-    
-    # Use structured output with ClerkOutput to validate matches
-    structured_llm = llm.with_structured_output(ClerkOutput)
+    # Load your markdown template
+    rendered_prompt = load_prompt(
+        prompt_name="inventory_clerk", 
+        variables=prompt_variables
+    )
+
+    # Iterative edit - modify existing description
     validation_prompt = ChatPromptTemplate.from_messages([
-        ("system", """Act as an inventory checker. Compare the construction plan against the found inventory items. We only care about raw materials right now (ignore tools and finishes).
-
-If you find what we need, mark is_successful=True and output the IDs. If the inventory falls short, set is_successful=False, list what you found, and tell the planner exactly what's missing. Use your best judgment to ensure the materials are actually suitable."""),
-        ("human", """Construction Plan:
-{construction_plan}
-
-Found Inventory Items:
-{found_items}
-
-Evaluate if these items are suitable for the construction plan. """),
+    ("system", rendered_prompt),
     ])
 
+    # Use structured output with ClerkOutput to validate matches
+    structured_llm = llm.with_structured_output(ClerkOutput)
+
     validation_chain = validation_prompt | structured_llm
-    result = validation_chain.invoke({
-        "construction_plan": construction_plan,
-        "found_items": found_items_text,
-    })
+    result = validation_chain.invoke({})
 
     # Validate IDs are from our found items
     valid_ids = [
