@@ -8,6 +8,7 @@ from app.core.config import settings
 from app.graph.state import AgentState
 from app.services.tools import get_inventory_retriever_tool
 from app.utils.parse_prompt import load_prompt
+from app.utils.parse_prompt import load_prompt
 
 
 # Initialize LLM based on configuration
@@ -131,6 +132,7 @@ def node_planner(state: AgentState) -> Dict[str, Any]:
 
 class ClerkOutput(BaseModel):
     """Pydantic model for structured output from Inventory Clerk."""
+    
     selected_ids: List[str] = Field(
         default_factory=list,
         description="List of item IDs from the inventory that match the construction plan requirements."
@@ -230,55 +232,57 @@ def node_inventory_clerk(state: AgentState) -> Dict[str, Any]:
         f"- ID: {item.get('id')}, Name: {item.get('name', 'Unknown')}, Description: {item.get('description', '')}"
         for item in all_found_items
     ]) if all_found_items else "No items found."
+    # Get the construction plan from state
+    construction_plan = state.get("construction_plan", "")
+
+    # Load prompt template from markdown file
+    prompt_variables = {
+        "construction_plan": construction_plan,
+        "found_items": found_items_text
+
+    }
+    
+    loaded_prompt = load_prompt("inventory_clerk", prompt_variables)
     
     # Use structured output with ClerkOutput to validate matches
     structured_llm = llm.with_structured_output(ClerkOutput)
-    validation_prompt = ChatPromptTemplate.from_messages([
-        ("system", """You are an inventory clerk. Your task is to:
-        1. Analyze the construction plan and the found inventory items
-        2. Determine if the found items are suitable matches for the materials/parts needed
-        3. If matches are good: Set is_successful=True and return the item IDs
-        4. If matches are poor or missing: Set is_successful=False and describe what's missing, give the items you found and tell the planner to update the plan.
-        5. Ignore requıred tools, finishes and ONLY FOCUS ON RAW MATERIALS.
-        Only set is_successful=True if you found suitable items 
-        that actually match the requirements in the construction plan."""),
-        ("human", """Construction Plan:
-{construction_plan}
-
-Found Inventory Items:
-{found_items}
-
-Evaluate if these items are suitable for the construction plan. 
-If they are good matches, return the item IDs and set is_successful=True.
-If they are poor matches or key parts are missing, set is_successful=False and describe what's missing."""),
-    ])
     
-    # validation_chain = validation_prompt | structured_llm
-    # result = validation_chain.invoke({
-    #    "construction_plan": construction_plan,
-    #    "found_items": found_items_text,
-    #})
+    # Use the loaded prompt template
+    validation_prompt = ChatPromptTemplate.from_messages([
+        ("system", "You are an inventory clerk. Follow the instructions in the prompt carefully and return structured JSON output."),
+        ("human", loaded_prompt if loaded_prompt else f""),
+    ])
+
+    validation_chain = validation_prompt | structured_llm
+    result = validation_chain.invoke({
+        "construction_plan": construction_plan,
+        "found_items": found_items_text,
+        "selected_ids": selected_ids,
+        #"is_successful": is_successful,
+        #"missing_parts_description": missing_parts_description      
+    })
     
     # Validate IDs are from our found items
-    #valid_ids = [
-    #    item_id for item_id in result.selected_ids
-    #    if item_id in selected_ids
-    #]
+    valid_ids = [
+        item_id for item_id in result.selected_ids
+        if item_id in selected_ids
+    ]
+    
     
     # Prepare return state
     return_state = {
-        "selected_item_ids": selected_ids,
-        "is_clerk_successful": True,
+        "selected_item_ids": valid_ids,
+        "is_clerk_successful": result.is_successful,
     }
     
-    #if not result.is_successful:
+    if not result.is_successful:
         # Provide feedback for the planner
-        #return_state["clerk_feedback"] = result.missing_parts_description or (
-        #    "No suitable inventory items found for the required materials in the construction plan. Here are the items I found: " + found_items_text
-        #)
-    #else:
+        return_state["clerk_feedback"] = result.missing_parts_description or (
+            "No suitable inventory items found for the required materials in the construction plan."
+        )
+    else:
         # Clear any previous feedback on success
-    return_state["clerk_feedback"] = None
+        return_state["clerk_feedback"] = None
     
     return return_state
 
@@ -307,19 +311,18 @@ def node_prompt_engineer(state: AgentState) -> Dict[str, Any]:
         for item in selected_items
     ])
     
+    # Load prompt template from markdown file
+    prompt_variables = {
+        "construction_plan": state.get("construction_plan", ""),
+        "items_description": items_description
+    }
+    
+    loaded_prompt = load_prompt("promt_engineer", prompt_variables)
+    
     prompt = ChatPromptTemplate.from_messages([
-        ("system", """You are a prompt engineer specializing in photorealistic image generation.
-        Your task is to create a detailed, optimized prompt for the FLUX API that will generate
-        a stunning hero shot of the construction project.
-        
-        The prompt should:
-        - Be highly descriptive and visual
-        - Include lighting, composition, and style details
-        - Reference the specific materials and construction
-        - Be optimized for photorealistic rendering
-        - Be concise but detailed (aim for 100-200 words)"""),
-        ("human", """Construction Plan:
-{construction_plan}
+        ("system", "You are a prompt engineer specializing in photorealistic image generation for FLUX API. Follow the instructions in the prompt carefully."),
+        ("human", loaded_prompt if loaded_prompt else f"""Construction Plan:
+{state.get("construction_plan", "")}
 
 Selected Materials:
 {items_description}
@@ -330,7 +333,7 @@ The image should showcase the final result in an impressive, professional manner
     
     chain = prompt | llm
     response = chain.invoke({
-        "construction_plan": state["construction_plan"],
+        "construction_plan": state.get("construction_plan", ""),
         "items_description": items_description,
     })
     
