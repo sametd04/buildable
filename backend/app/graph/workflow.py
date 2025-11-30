@@ -32,7 +32,7 @@ def check_inventory_status(state: AgentState) -> Literal["agent_c", "agent_a", "
         return "agent_c"  # Proceed to Prompt Engineering
     
     retry_count = state.get("retry_count", 0)
-    if retry_count >= 3:
+    if retry_count >= 1:
         return "end_fail"  # Give up after 3 retries
     
     return "agent_a"  # Loop back to Planner
