@@ -40,178 +40,7 @@ export default function BuildableDashboard() {
     setSelectedItems((prev) => (prev.includes(itemId) ? prev.filter((id) => id !== itemId) : [...prev, itemId]))
   }
 
-  const handleBuildWithStreaming = async (prompt: string) => {
-    // Build the user query from conversation data if available
-    let finalPrompt = prompt
-    if (conversationData && Object.keys(conversationData).length > 0) {
-      // Construct a detailed prompt from conversation data
-      const parts = []
-      if (conversationData.use_case) parts.push(`Use case: ${conversationData.use_case}`)
-      if (conversationData.dimensions) parts.push(`Dimensions: ${conversationData.dimensions}`)
-      if (conversationData.style_preferences) parts.push(`Style: ${conversationData.style_preferences}`)
-      if (conversationData.material_preferences) parts.push(`Materials: ${conversationData.material_preferences}`)
-      if (conversationData.personalization) parts.push(`Personalization: ${conversationData.personalization}`)
-      if (conversationData.constraints) parts.push(`Constraints: ${conversationData.constraints}`)
-      finalPrompt = parts.join(". ")
-    }
-
-    // Add user message
-    const userMessageId = `user-${Date.now()}-${Math.random()}`
-    setAgentMessages((prev) => [
-      ...prev,
-      {
-        id: userMessageId,
-        type: "user",
-        content: prompt || "Building your design...",
-      },
-    ])
-
-    setIsThinking(true)
-
-    const thinkingMessageId = `agent-${Date.now()}-${Math.random()}`
-    setAgentMessages((prev) => [
-      ...prev,
-      {
-        id: thinkingMessageId,
-        type: "agent",
-        content: "Great! I have enough information. Now generating your design...",
-        steps: [
-          "⏳ Style Optimizer: Expanding design vision...",
-          "⏳ Planner: Creating construction plan...",
-          "⏳ Inventory Clerk: Searching for materials...",
-          "⏳ Prompt Engineer: Optimizing image prompt...",
-          "⏳ Flux Generator: Rendering image...",
-        ],
-      },
-    ])
-
-    try {
-      const params = new URLSearchParams({
-        user_query: finalPrompt,
-        previous_style_description: styleDescription || "",
-        previous_image_url: generatedImage || "",
-      })
-      const eventSource = new EventSource(
-        `http://localhost:8000/api/v1/build-stream?${params.toString()}`
-      )
-
-      const stepMapping: Record<string, number> = {
-        "style_optimizer": 0,
-        "planner": 1,
-        "inventory_clerk": 2,
-        "prompt_engineer": 3,
-        "flux_generator": 4,
-      }
-
-      const stepMessages = [
-        "Style Optimizer: Expanding design vision...",
-        "Planner: Creating construction plan...",
-        "Inventory Clerk: Searching for materials...",
-        "Prompt Engineer: Optimizing image prompt...",
-        "Flux Generator: Rendering image...",
-      ]
-
-      const completedSteps = [
-        "⏳ Style Optimizer: Expanding design vision...",
-        "⏳ Planner: Creating construction plan...",
-        "⏳ Inventory Clerk: Searching for materials...",
-        "⏳ Prompt Engineer: Optimizing image prompt...",
-        "⏳ Flux Generator: Rendering image...",
-      ]
-
-      eventSource.onmessage = (event) => {
-        const data = JSON.parse(event.data)
-
-        if (data.type === "progress") {
-          // Update step progress - mark as complete
-          const stepIndex = stepMapping[data.node]
-          if (stepIndex !== undefined) {
-            completedSteps[stepIndex] = `✓ ${stepMessages[stepIndex]}`
-            setAgentMessages((prev) =>
-              prev.map((msg) =>
-                msg.id === thinkingMessageId
-                  ? { ...msg, steps: [...completedSteps] }
-                  : msg
-              )
-            )
-          }
-        } else if (data.type === "result") {
-          // Update partial results
-          if (data.field === "style_description") {
-            setStyleDescription(data.value)
-          } else if (data.field === "construction_plan") {
-            setConstructionPlan(data.value)
-          } else if (data.field === "selected_items") {
-            setSelectedItems(data.value.ids)
-            setSelectedItemsData(data.value.items)
-          } else if (data.field === "final_image_url") {
-            setImageHistory((prev) => [...prev, data.value])
-            setGeneratedImage(data.value)
-          }
-        } else if (data.type === "complete") {
-          eventSource.close()
-          setIsThinking(false)
-          
-          // Mark all steps as complete
-          const allComplete = stepMessages.map(msg => `✓ ${msg}`)
-          setAgentMessages((prev) =>
-            prev.map((msg) =>
-              msg.id === thinkingMessageId
-                ? {
-                    ...msg,
-                    content: data.success
-                      ? "Build completed successfully!"
-                      : `Build failed: ${data.error}`,
-                    steps: allComplete,
-                  }
-                : msg
-            )
-          )
-        } else if (data.type === "error") {
-          eventSource.close()
-          setIsThinking(false)
-          setAgentMessages((prev) => [
-            ...prev,
-            {
-              id: `error-${Date.now()}-${Math.random()}`,
-              type: "agent",
-              content: `Error: ${data.error}`,
-            },
-          ])
-        }
-      }
-
-      eventSource.onerror = () => {
-        eventSource.close()
-        setIsThinking(false)
-        setAgentMessages((prev) => [
-          ...prev,
-          {
-            id: `error-${Date.now()}-${Math.random()}`,
-            type: "agent",
-            content: "Connection error. Please try again.",
-          },
-        ])
-      }
-    } catch (error) {
-      setIsThinking(false)
-      setAgentMessages((prev) => [
-        ...prev,
-        {
-          id: `error-${Date.now()}-${Math.random()}`,
-          type: "agent",
-          content: `Error: ${error instanceof Error ? error.message : "Unknown error"}`,
-        },
-      ])
-    }
-  }
-
   const handleBuild = async (prompt: string, skipConversation: boolean = false) => {
-    // If skipping conversation, use streaming
-    if (skipConversation) {
-      return handleBuildWithStreaming(prompt)
-    }
-
     // Add user message to conversation
     const newUserMessage = { role: "user", content: prompt }
     const updatedHistory = [...conversationHistory, newUserMessage]
@@ -233,8 +62,24 @@ export default function BuildableDashboard() {
     // Add initial agent message
     const thinkingMessageId = generateMessageId()
 
-    // In conversation mode, show a simple thinking message
-    if (false) {
+    // Only show workflow steps if we're explicitly skipping conversation
+    // Otherwise, we're in conversation mode and should show a simple thinking message
+    if (skipConversation) {
+      setAgentMessages((prev) => [
+        ...prev,
+        {
+          id: thinkingMessageId,
+          type: "agent",
+          content: "Processing your request...",
+          steps: [
+            "Style Optimizer: Expanding design vision...",
+            "Planner: Creating construction plan...",
+            "Inventory Clerk: Searching for materials...",
+            "Prompt Engineer: Optimizing image prompt...",
+            "Flux Generator: Rendering image...",
+          ],
+        },
+      ])
     } else {
       // During conversation, create an empty message that we'll stream into
       setAgentMessages((prev) => [
@@ -375,143 +220,57 @@ export default function BuildableDashboard() {
           }
 
           if (data.ready_for_workflow) {
-            // Proceed to workflow with streaming
+            // Proceed to workflow
             setIsInConversation(false)
 
-            // Build final prompt from conversation data
-            let workflowPrompt = prompt
-            if (data.conversation_data && Object.keys(data.conversation_data).length > 0) {
-              const parts = []
-              if (data.conversation_data.use_case) parts.push(`Use case: ${data.conversation_data.use_case}`)
-              if (data.conversation_data.dimensions) parts.push(`Dimensions: ${data.conversation_data.dimensions}`)
-              if (data.conversation_data.style_preferences) parts.push(`Style: ${data.conversation_data.style_preferences}`)
-              if (data.conversation_data.material_preferences) parts.push(`Materials: ${data.conversation_data.material_preferences}`)
-              if (data.conversation_data.personalization) parts.push(`Personalization: ${data.conversation_data.personalization}`)
-              if (data.conversation_data.constraints) parts.push(`Constraints: ${data.conversation_data.constraints}`)
-              workflowPrompt = parts.join(". ")
-            }
-
-            // Update message to show workflow is starting with initial steps
-            const workflowMessageId = generateMessageId()
-            setAgentMessages((prev) => [
-              ...prev,
-              {
-                id: workflowMessageId,
-                type: "agent",
-                content: "Great! I have enough information. Now generating your design...",
-                steps: [
-                  "⏳ Style Optimizer: Expanding design vision...",
-                  "⏳ Planner: Creating construction plan...",
-                  "⏳ Inventory Clerk: Searching for materials...",
-                  "⏳ Prompt Engineer: Optimizing image prompt...",
-                  "⏳ Flux Generator: Rendering image...",
-                ],
-              },
-            ])
-
-            // Now use streaming endpoint for workflow
-            try {
-              const params = new URLSearchParams({
-                user_query: workflowPrompt,
-                previous_style_description: styleDescription || "",
-                previous_image_url: generatedImage || "",
-              })
-              const eventSource = new EventSource(
-                `http://localhost:8000/api/v1/build-stream?${params.toString()}`
+            // Update message to show workflow is starting
+            setAgentMessages((prev) =>
+              prev.map((msg) =>
+                msg.id === thinkingMessageId
+                  ? {
+                    ...msg,
+                    content: "Great! I have enough information. Now generating your design...",
+                    steps: [
+                      "Style Optimizer: Expanding design vision...",
+                      "Planner: Creating construction plan...",
+                      "Inventory Clerk: Searching for materials...",
+                      "Prompt Engineer: Optimizing image prompt...",
+                      "Flux Generator: Rendering image...",
+                    ],
+                  }
+                  : msg
               )
+            )
 
-              const stepMapping: Record<string, number> = {
-                "style_optimizer": 0,
-                "planner": 1,
-                "inventory_clerk": 2,
-                "prompt_engineer": 3,
-                "flux_generator": 4,
-              }
+            // Now call the regular build endpoint to proceed with workflow
+            try {
+              const workflowResponse: BuildResponse = await buildProject({
+                user_query: prompt,
+                previous_style_description: styleDescription || undefined,
+                previous_image_url: generatedImage || undefined,
+                conversation_history: finalHistory,
+                conversation_data: data.conversation_data || conversationData,
+                skip_conversation: false, // We're ready now
+              })
 
-              const stepMessages = [
-                "Style Optimizer: Expanding design vision...",
-                "Planner: Creating construction plan...",
-                "Inventory Clerk: Searching for materials...",
-                "Prompt Engineer: Optimizing image prompt...",
-                "Flux Generator: Rendering image...",
-              ]
+              // Handle workflow response
+              if (workflowResponse.status === "success") {
+                setStyleDescription(workflowResponse.style_description || null)
+                setConstructionPlan(workflowResponse.construction_plan || null)
+                setSelectedItems(workflowResponse.selected_item_ids)
+                setSelectedItemsData(workflowResponse.selected_items)
 
-              const completedSteps = [
-                "⏳ Style Optimizer: Expanding design vision...",
-                "⏳ Planner: Creating construction plan...",
-                "⏳ Inventory Clerk: Searching for materials...",
-                "⏳ Prompt Engineer: Optimizing image prompt...",
-                "⏳ Flux Generator: Rendering image...",
-              ]
-
-              eventSource.onmessage = (event) => {
-                const streamData = JSON.parse(event.data)
-
-                if (streamData.type === "progress") {
-                  // Update step progress - mark as complete
-                  const stepIndex = stepMapping[streamData.node]
-                  if (stepIndex !== undefined) {
-                    completedSteps[stepIndex] = `✓ ${stepMessages[stepIndex]}`
-                    setAgentMessages((prev) =>
-                      prev.map((msg) =>
-                        msg.id === workflowMessageId
-                          ? { ...msg, steps: [...completedSteps] }
-                          : msg
-                      )
-                    )
-                  }
-                } else if (streamData.type === "result") {
-                  // Update partial results
-                  if (streamData.field === "style_description") {
-                    setStyleDescription(streamData.value)
-                  } else if (streamData.field === "construction_plan") {
-                    setConstructionPlan(streamData.value)
-                  } else if (streamData.field === "selected_items") {
-                    setSelectedItems(streamData.value.ids)
-                    setSelectedItemsData(streamData.value.items)
-                  } else if (streamData.field === "final_image_url") {
-                    setImageHistory((prev) => [...prev, streamData.value])
-                    setGeneratedImage(streamData.value)
-                  }
-                } else if (streamData.type === "complete") {
-                  eventSource.close()
-                  
-                  // Mark all steps as complete
-                  const allComplete = stepMessages.map(msg => `✓ ${msg}`)
-                  setAgentMessages((prev) =>
-                    prev.map((msg) =>
-                      msg.id === workflowMessageId
-                        ? {
-                            ...msg,
-                            content: streamData.success
-                              ? "Build completed successfully!"
-                              : `Build failed: ${streamData.error}`,
-                            steps: allComplete,
-                          }
-                        : msg
-                    )
-                  )
-                } else if (streamData.type === "error") {
-                  eventSource.close()
-                  setAgentMessages((prev) => [
-                    ...prev,
-                    {
-                      id: generateMessageId(),
-                      type: "agent",
-                      content: `Error: ${streamData.error}`,
-                    },
-                  ])
+                if (workflowResponse.final_image_url) {
+                  setImageHistory((prev) => [...prev, workflowResponse.final_image_url!])
+                  setGeneratedImage(workflowResponse.final_image_url)
                 }
-              }
 
-              eventSource.onerror = () => {
-                eventSource.close()
                 setAgentMessages((prev) => [
                   ...prev,
                   {
                     id: generateMessageId(),
                     type: "agent",
-                    content: "Connection error. Please try again.",
+                    content: `Found ${workflowResponse.selected_item_ids.length} matching materials in inventory.`,
                   },
                 ])
               }
@@ -647,22 +406,7 @@ export default function BuildableDashboard() {
           messageRef={scrollRef}
           selectedItemsCount={selectedItems.length}
           isInConversation={isInConversation}
-          onSkipConversation={() => {
-            // Build prompt from conversation data if available
-            let skipPrompt = ""
-            if (conversationData && Object.keys(conversationData).length > 0) {
-              const parts = []
-              if (conversationData.use_case) parts.push(`Use case: ${conversationData.use_case}`)
-              if (conversationData.dimensions) parts.push(`Dimensions: ${conversationData.dimensions}`)
-              if (conversationData.style_preferences) parts.push(`Style: ${conversationData.style_preferences}`)
-              if (conversationData.material_preferences) parts.push(`Materials: ${conversationData.material_preferences}`)
-              if (conversationData.personalization) parts.push(`Personalization: ${conversationData.personalization}`)
-              if (conversationData.constraints) parts.push(`Constraints: ${conversationData.constraints}`)
-              skipPrompt = parts.join(". ")
-            }
-            handleBuild(skipPrompt, true)
-          }}
-          hasConversationData={Object.keys(conversationData).length > 0}
+          onSkipConversation={() => handleBuild("", true)}
         />
       </div>
 
