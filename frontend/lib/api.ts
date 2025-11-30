@@ -61,3 +61,39 @@ export async function getInventory(): Promise<InventoryItem[]> {
   return []
 }
 
+export interface GenerateAssemblyManualRequest {
+  construction_plan: string
+  selected_item_ids: string[]
+  final_image_url: string
+}
+
+export interface GenerateAssemblyManualResponse {
+  success: boolean
+  assembly_manual_prompts: string[]
+  assembly_manual_images: string[]
+  error?: string
+}
+
+/**
+ * Call the /generate-assembly-manual endpoint to generate assembly instructions
+ * after the user confirms they're happy with the final product image
+ */
+export async function generateAssemblyManual(
+  request: GenerateAssemblyManualRequest
+): Promise<GenerateAssemblyManualResponse> {
+  const response = await fetch(`${API_BASE_URL}/generate-assembly-manual`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(request),
+  })
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({ detail: "Unknown error" }))
+    throw new Error(errorData.detail || `HTTP error! status: ${response.status}`)
+  }
+
+  return response.json()
+}
+

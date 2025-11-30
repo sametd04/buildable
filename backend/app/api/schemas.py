@@ -72,3 +72,36 @@ class FluxTestResponse(BaseModel):
     image_url: Optional[str] = Field(None, description="URL of the generated image")
     error: Optional[str] = Field(None, description="Error message if generation failed")
 
+
+class GenerateAssemblyManualRequest(BaseModel):
+    """Request schema for the /generate-assembly-manual endpoint."""
+    construction_plan: str = Field(
+        ...,
+        description="The construction plan for which to generate the assembly manual",
+        min_length=1,
+    )
+    selected_item_ids: List[str] = Field(
+        ...,
+        description="List of selected inventory item IDs",
+        min_length=1,
+    )
+    final_image_url: str = Field(
+        ...,
+        description="URL of the confirmed final product image. The assembly manual should match this visual style and appearance.",
+        min_length=1,
+    )
+
+
+class GenerateAssemblyManualResponse(BaseModel):
+    """Response schema for the /generate-assembly-manual endpoint."""
+    success: bool = Field(..., description="Whether the assembly manual generation was successful")
+    assembly_manual_prompts: List[str] = Field(
+        default_factory=list,
+        description="List of prompts for each assembly step"
+    )
+    assembly_manual_images: List[str] = Field(
+        default_factory=list,
+        description="List of image URLs for each assembly step"
+    )
+    error: Optional[str] = Field(None, description="Error message if generation failed")
+

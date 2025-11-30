@@ -6,7 +6,7 @@ import { AssemblyWorkbench } from "@/components/assembly-workbench"
 import { AgentCommandCenter } from "@/components/agent-command-center"
 import { ResizableDivider } from "@/components/resizable-divider"
 import { ThemeToggle } from "@/components/theme-toggle"
-import { buildProject, type BuildResponse, type InventoryItem } from "@/lib/api"
+import { buildProject, generateAssemblyManual, type BuildResponse, type InventoryItem, type GenerateAssemblyManualResponse } from "@/lib/api"
 
 export default function BuildableDashboard() {
   const [selectedItems, setSelectedItems] = useState<string[]>([])
@@ -22,6 +22,9 @@ export default function BuildableDashboard() {
   const [selectedParentIndices, setSelectedParentIndices] = useState<number[]>([])
   const scrollRef = useRef<HTMLDivElement | null>(null)
   const [assemblyHeight, setAssemblyHeight] = useState(70) // percentage
+  const [assemblyManualImages, setAssemblyManualImages] = useState<string[]>([])
+  const [assemblyManualPrompts, setAssemblyManualPrompts] = useState<string[]>([])
+  const [isGeneratingManual, setIsGeneratingManual] = useState(false)
 
   const handleSelectItem = (itemId: string) => {
     setSelectedItems((prev) => (prev.includes(itemId) ? prev.filter((id) => id !== itemId) : [...prev, itemId]))
@@ -61,7 +64,7 @@ export default function BuildableDashboard() {
 
     try {
       // Call backend API with previous context
-      const response: BuildResponse = await buildProject({ 
+      const response: BuildResponse = await buildProject({
         user_query: prompt,
         previous_style_description: styleDescription || undefined,
         previous_image_url: generatedImage || undefined,
@@ -100,7 +103,7 @@ export default function BuildableDashboard() {
         setConstructionPlan(response.construction_plan || null)
         setSelectedItems(response.selected_item_ids)
         setSelectedItemsData(response.selected_items)
-        
+
         // Add new image to history and set as current
         if (response.final_image_url) {
           setImageHistory((prev) => [...prev, response.final_image_url!])
@@ -151,6 +154,58 @@ export default function BuildableDashboard() {
     }
   }
 
+  const handleGenerateAssemblyManual = async () => {
+    if (!constructionPlan || !generatedImage || selectedItems.length === 0) {
+      return
+    }
+
+    setIsGeneratingManual(true)
+
+    try {
+      const response: GenerateAssemblyManualResponse = await generateAssemblyManual({
+        construction_plan: constructionPlan,
+        selected_item_ids: selectedItems,
+        final_image_url: generatedImage,
+      })
+
+      if (response.success) {
+        setAssemblyManualImages(response.assembly_manual_images)
+        setAssemblyManualPrompts(response.assembly_manual_prompts)
+
+        // Add success message
+        setAgentMessages((prev) => [
+          ...prev,
+          {
+            id: Date.now().toString(),
+            type: "agent",
+            content: `Assembly manual generated successfully with ${response.assembly_manual_images.length} steps!`,
+          },
+        ])
+      } else {
+        setAgentMessages((prev) => [
+          ...prev,
+          {
+            id: Date.now().toString(),
+            type: "agent",
+            content: response.error || "Failed to generate assembly manual. Please try again.",
+          },
+        ])
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Failed to generate assembly manual"
+      setAgentMessages((prev) => [
+        ...prev,
+        {
+          id: Date.now().toString(),
+          type: "agent",
+          content: `Error: ${errorMessage}`,
+        },
+      ])
+    } finally {
+      setIsGeneratingManual(false)
+    }
+  }
+
   const handleResize = (delta: number) => {
     const centerPanel = document.querySelector(".center-panel")
     if (!centerPanel) return
@@ -195,6 +250,11 @@ export default function BuildableDashboard() {
             onSelectHistoryImage={(imageUrl) => setGeneratedImage(imageUrl)}
             selectedParents={selectedParentIndices}
             onParentSelect={setSelectedParentIndices}
+            assemblyManualImages={assemblyManualImages}
+            assemblyManualPrompts={assemblyManualPrompts}
+            onGenerateAssemblyManual={handleGenerateAssemblyManual}
+            isGeneratingManual={isGeneratingManual}
+            canGenerateManual={!!constructionPlan && !!generatedImage && selectedItems.length > 0}
           />
         </div>
 
