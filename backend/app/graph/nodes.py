@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 from app.core.config import settings
 from app.graph.state import AgentState
 from app.services.tools import get_inventory_retriever_tool, get_inventory_retriever
+from app.utils.parse_prompt import load_prompt
 
 
 # Initialize LLM based on configuration
@@ -35,32 +36,25 @@ def node_style_optimizer(state: AgentState) -> Dict[str, Any]:
     """
     llm = get_llm()
     
+    # Get user query
+    user_query = state.get("user_query")
+    
+    prompt_variables = {
+        "user_query": user_query,
+    }
+
+    # Load your markdown template
+    rendered_prompt = load_prompt(
+        prompt_name="optimize_user_query", 
+        variables=prompt_variables
+    )
+
+    if not rendered_prompt:
+        raise ValueError("Failed to load 'optimize_user_query.md' or template is empty")
 
     prompt = ChatPromptTemplate.from_messages([
-        ("system", """
-    User's request: {user_query}
-    """)
+        ("system", rendered_prompt),
     ])
-
-    """
-    prompt = ChatPromptTemplate.from_messages([
-        ("system", ""You are an expert Design Consultant. Your job is to take a short user request 
-        and expand it into a detailed, paragraph-long visual description focusing on mood, texture, 
-        and lighting. Do not list specific parts, just the vibe.
-        
-        Create a rich, evocative description that captures:
-        - The overall aesthetic and mood
-        - Visual textures and finishes
-        - Color palette and lighting atmosphere
-        - The feeling and character of the design
-        - Any thematic elements or style references
-        
-        Keep it focused on the visual and emotional aspects, not on construction details or materials.""),
-        ("human", ""User's request: {user_query}
-
-Expand this into a detailed visual description focusing on the aesthetic, mood, texture, and lighting. 
-Write a paragraph that captures the vibe and feeling of this design.""),
-    ])"""
     
     chain = prompt | llm
     response = chain.invoke({
@@ -91,83 +85,42 @@ def node_planner(state: AgentState) -> Dict[str, Any]:
     
     # Check if there's feedback from the clerk
     clerk_feedback = state.get("clerk_feedback")
-    
+
+    # Get the previous construction plan
+    construction_plan = state.get("construction_plan")
+
+    # Get user query
+    user_query = state.get("user_query")
+
+    prompt_variables = {
+        "style_description": style_description,
+        "user_query": user_query,
+    }
+
+    rendered_prompt = ""
     if clerk_feedback:
         # Previous attempt failed - need to revise with alternative materials
-        system_prompt = """You are an expert construction planner. Your previous construction plan failed 
-        because the required materials were not available in the inventory.
-        
-        The Inventory Clerk reported: {clerk_feedback}
-        
-        Your task is to REWRITE the construction plan using ALTERNATIVE materials that are commonly 
-        available in a standard hardware store. Focus on:
-        - Standard materials like wood, metal, concrete, plastic, fabric, lighting
-        - Common hardware items like pipes, planks, blocks, cables, bolts
-        - Avoid exotic or specialized materials
-        
-        IMPORTANT: Maintain the design aesthetic described in the style description.
-        Use alternative materials but preserve the visual character and mood.
-        
-        Be specific about:
-        - What alternative materials and parts will be used
-        - How they will be assembled
-        - The final structure's appearance and function
-        
-        Make the plan practical and achievable with standard hardware store inventory."""
-        
-        human_prompt = """Style Description (maintain this aesthetic):
-{style_description}
-
-User's original idea: {user_query}
-
-Previous attempt failed. Please rewrite the construction plan using ALTERNATIVE materials 
-that are available in a standard hardware store. Avoid the materials that were missing, 
-but maintain the visual style and aesthetic described above."""
+        prompt_variables["clerk_feedback"] = clerk_feedback
+        prompt_variables["previous_plan"] = construction_plan or ""
+        rendered_prompt = load_prompt(
+        prompt_name="planner_with_clerk_feedback", 
+        variables=prompt_variables
+        )
     else:
         # Standard planning behavior - use style_description as primary context
-        system_prompt = """You are an expert construction planner. Your task is to create a detailed, 
-        step-by-step construction plan based on a style description and user request.
+        rendered_prompt = load_prompt(
+        prompt_name="planner_without_clerk_feedback", 
+        variables=prompt_variables
+        )
         
-        The style description provides the aesthetic vision - your job is to translate that vision 
-        into a practical construction plan using standard hardware store materials.
-        
-        Be specific about:
-        - What materials and parts will be used (describe them clearly)
-        - How they will be assembled
-        - How the final structure will achieve the desired aesthetic
-        - The final structure's appearance and function
-        
-        Make the plan practical and achievable. Describe materials and parts in detail so they can be 
-        found in a hardware inventory catalog. Use descriptive terms like "steel pipe", "wood plank", 
-        "LED lighting", etc. Focus on standard hardware store materials."""
-        
-        human_prompt = """Style Description (this is your primary design context):
-{style_description}
-
-User's original idea: {user_query}
-
-Generate a detailed construction plan that realizes the aesthetic vision described above.
-The plan should be specific, actionable, and clearly describe the materials and parts needed 
-to achieve this design style."""
-    
     prompt = ChatPromptTemplate.from_messages([
-        ("system", system_prompt),
-        ("human", human_prompt),
-    ])
+        ("system", rendered_prompt),
+        ])
     
     chain = prompt | llm
     
-    if clerk_feedback:
-        response = chain.invoke({
-            "style_description": style_description,
-            "user_query": state["user_query"],
-            "clerk_feedback": clerk_feedback,
-        })
-    else:
-        response = chain.invoke({
-            "style_description": style_description,
-            "user_query": state["user_query"],
-        })
+    # Invoke the LLM (no extra variables needed)
+    response = chain.invoke({})
     
     construction_plan = response.content
     
@@ -178,6 +131,7 @@ to achieve this design style."""
 
 class ClerkOutput(BaseModel):
     """Pydantic model for structured output from Inventory Clerk."""
+    
     selected_ids: List[str] = Field(
         default_factory=list,
         description="List of item IDs from the inventory that match the construction plan requirements."
@@ -255,6 +209,17 @@ def node_inventory_clerk(state: AgentState) -> Dict[str, Any]:
         f"- ID: {item.get('id')}, Name: {item.get('name', 'Unknown')}, Description: {item.get('description', '')}"
         for item in all_found_items
     ]) if all_found_items else "No items found."
+    # Get the construction plan from state
+    construction_plan = state.get("construction_plan", "")
+
+    # Load prompt template from markdown file
+    prompt_variables = {
+        "construction_plan": construction_plan,
+        "found_items": found_items_text
+
+    }
+    
+    #loaded_prompt = load_prompt("inventory_clerk", prompt_variables)
     
     # Use structured output with ClerkOutput to validate matches
     structured_llm = llm.with_structured_output(ClerkOutput)
@@ -329,19 +294,18 @@ def node_prompt_engineer(state: AgentState) -> Dict[str, Any]:
         for item in selected_items
     ])
     
+    # Load prompt template from markdown file
+    prompt_variables = {
+        "construction_plan": state.get("construction_plan", ""),
+        "items_description": items_description
+    }
+    
+    loaded_prompt = load_prompt("promt_engineer", prompt_variables)
+    
     prompt = ChatPromptTemplate.from_messages([
-        ("system", """You are a prompt engineer specializing in photorealistic image generation.
-        Your task is to create a detailed, optimized prompt for the FLUX API that will generate
-        a stunning hero shot of the construction project.
-        
-        The prompt should:
-        - Be highly descriptive and visual
-        - Include lighting, composition, and style details
-        - Reference the specific materials and construction
-        - Be optimized for photorealistic rendering
-        - Be concise but detailed (aim for 100-200 words)"""),
-        ("human", """Construction Plan:
-{construction_plan}
+        ("system", "You are a prompt engineer specializing in photorealistic image generation for FLUX API. Follow the instructions in the prompt carefully."),
+        ("human", loaded_prompt if loaded_prompt else f"""Construction Plan:
+{state.get("construction_plan", "")}
 
 Selected Materials:
 {items_description}
@@ -352,7 +316,7 @@ The image should showcase the final result in an impressive, professional manner
     
     chain = prompt | llm
     response = chain.invoke({
-        "construction_plan": state["construction_plan"],
+        "construction_plan": state.get("construction_plan", ""),
         "items_description": items_description,
     })
     

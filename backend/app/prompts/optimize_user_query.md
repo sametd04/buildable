@@ -6,8 +6,8 @@ Your task is to take the user's raw request — consisting of free text and **re
 
 ## INPUT
 
-**User Text Input:**
-${USER_INPUT}
+### 1. User Text Input
+${user_query}
 
 **Reference Images Content:**
 The visual data from the reference images is provided to you for complete analysis of structure, materials, and finish. **Analyze the visual content to extract all relevant details.**
@@ -30,9 +30,6 @@ Using the information above, perform the following steps to generate a detailed 
 ## OUTPUT FORMAT
 
 Return the optimized description using the exact structure below:
-
-**Optimized Style Description:**
-${OPTIMIZED_QUERY}$
 
 The optimized description **must** include, when relevant to the input:
 * **Object Summary:** The specific type and function of the furniture (e.g., Industrial-style corner desk, Two-tier modular pipe shelving unit).
