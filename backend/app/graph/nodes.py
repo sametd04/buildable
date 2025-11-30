@@ -8,6 +8,8 @@ from app.core.config import settings
 from app.graph.state import AgentState
 from app.services.tools import get_inventory_retriever_tool, get_inventory_retriever
 from app.utils.parse_prompt import load_prompt
+from app.utils.compose_images import compose_images_to_bytes
+import base64
 
 
 # Initialize LLM based on configuration
