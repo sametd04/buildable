@@ -34,7 +34,8 @@ class AgentState(TypedDict):
     selected_item_ids: List[str]
     flux_prompt: Optional[str]
     final_image_url: Optional[str]
-    assembly_manual_prompts: List[Any]
+    material_image: Optional[str]
+    assembly_manual_prompts: List[str]
     assembly_manual_images: List[str]
     retry_count: int
     clerk_feedback: Optional[str]
