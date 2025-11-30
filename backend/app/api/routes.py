@@ -1,10 +1,21 @@
 """API routes for triggering graph execution."""
 from fastapi import APIRouter, HTTPException
-from app.api.schemas import BuildRequest, BuildResponse, FluxTestRequest, FluxTestResponse
+from app.api.schemas import (
+    BuildRequest, 
+    BuildResponse, 
+    FluxTestRequest, 
+    FluxTestResponse,
+    GenerateAssemblyManualRequest,
+    GenerateAssemblyManualResponse,
+)
 from app.core.database import get_inventory, get_inventory_item_by_id
 from app.core.config import settings
 from app.graph.workflow import get_workflow
 from app.graph.state import AgentState
+from app.graph.nodes import (
+    node_assembly_manual_prompt_engineer,
+    node_assembly_manual_generator,
+)
 from app.services.flux_service import generate_image
 from langfuse import observe
 import traceback
@@ -150,8 +161,8 @@ async def build(request: BuildRequest) -> BuildResponse:
             selected_items=selected_items,
             flux_prompt=final_state.get("flux_prompt"),
             final_image_url=final_state.get("final_image_url"),
-            assembly_manual_prompts=final_state.get("assembly_manual_prompts", []),
-            assembly_manual_images=final_state.get("assembly_manual_images", []),
+            assembly_manual_prompts=[],  # Assembly manual not generated in workflow
+            assembly_manual_images=[],  # Assembly manual not generated in workflow
         )
         
     except ConnectionError as e:
@@ -205,4 +216,57 @@ async def test_flux(request: FluxTestRequest) -> FluxTestResponse:
         return FluxTestResponse(
             success=False,
             error=f"FLUX test failed: {str(e)}\n\nTraceback:\n{error_trace}",
+        )
+
+
+@router.post("/generate-assembly-manual", response_model=GenerateAssemblyManualResponse)
+@observe(name="generate_assembly_manual_endpoint")
+async def generate_assembly_manual(request: GenerateAssemblyManualRequest) -> GenerateAssemblyManualResponse:
+    """
+    POST /generate-assembly-manual endpoint.
+    
+    Generates an assembly manual for a confirmed product design.
+    This endpoint is called after the user confirms they're happy with the final product image.
+    
+    Takes the construction plan and selected item IDs, then generates step-by-step
+    assembly instructions with images.
+    """
+    try:
+        # Create a minimal state with only the data needed for assembly manual generation
+        state: AgentState = {
+            "user_query": "",  # Not needed for assembly manual
+            "style_description": "",  # Not needed for assembly manual
+            "construction_plan": request.construction_plan,
+            "selected_item_ids": request.selected_item_ids,
+            "flux_prompt": None,  # Not needed for assembly manual
+            "final_image_url": request.final_image_url,  # Use confirmed product image for consistency
+            "assembly_manual_prompts": [],
+            "assembly_manual_images": [],
+            "retry_count": 0,
+            "clerk_feedback": None,
+            "status": "processing",
+            "is_clerk_successful": True,  # Assume success since items were already selected
+        }
+        
+        # Generate assembly manual prompts
+        prompt_state = node_assembly_manual_prompt_engineer(state)
+        state.update(prompt_state)
+        
+        # Generate assembly manual images
+        image_state = node_assembly_manual_generator(state)
+        state.update(image_state)
+        
+        return GenerateAssemblyManualResponse(
+            success=True,
+            assembly_manual_prompts=state.get("assembly_manual_prompts", []),
+            assembly_manual_images=state.get("assembly_manual_images", []),
+        )
+        
+    except Exception as e:
+        error_trace = traceback.format_exc()
+        return GenerateAssemblyManualResponse(
+            success=False,
+            assembly_manual_prompts=[],
+            assembly_manual_images=[],
+            error=f"Assembly manual generation failed: {str(e)}\n\nTraceback:\n{error_trace}",
         )

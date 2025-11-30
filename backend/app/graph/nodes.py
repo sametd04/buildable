@@ -414,6 +414,24 @@ def node_assembly_manual_prompt_engineer(state: AgentState) -> Dict[str, Any]:
         for item in selected_items
     ])
     
+    # Get the final product image URL for visual consistency
+    final_image_url = state.get("final_image_url")
+    final_image_context = ""
+    if final_image_url:
+        final_image_context = f"""
+        
+CRITICAL: The final product image is available at: {final_image_url}
+The assembly manual steps MUST match the visual style, materials, colors, lighting, and overall appearance of this confirmed final product image.
+Analyze the final product image to understand:
+- The exact visual style and aesthetic
+- Material textures and finishes
+- Color scheme and tones
+- Lighting conditions and mood
+- Camera angle and perspective
+- Overall composition and design details
+
+The assembly steps should progressively build toward this exact final product appearance."""
+    
     prompt = ChatPromptTemplate.from_messages([
         ("system", """You are a technical writer specializing in creating step-by-step assembly instructions.
         Your task is to analyze a construction plan and break it down into clear, sequential assembly steps.
@@ -459,6 +477,7 @@ def node_assembly_manual_prompt_engineer(state: AgentState) -> Dict[str, Any]:
 
 Selected Materials:
 {items_description}
+{final_image_context}
 
 Generate step-by-step assembly prompts that show ASSEMBLY ACTIONS and MOVEMENTS. Break down the construction plan into clear sequential steps.
 Each prompt must:
@@ -485,6 +504,7 @@ Step 4: "Aligning and positioning [components] onto the structure from step 3, h
         result = chain.invoke({
             "construction_plan": construction_plan,
             "items_description": items_description,
+            "final_image_context": final_image_context,
         })
         assembly_prompts = result.steps
         
@@ -532,6 +552,7 @@ Step 4: "Aligning and positioning [components] onto the structure from step 3, h
         response = chain.invoke({
             "construction_plan": construction_plan,
             "items_description": items_description,
+            "final_image_context": final_image_context,
         })
         
         # Parse the response - it should be a JSON array of strings or numbered list
@@ -604,6 +625,9 @@ def node_assembly_manual_generator(state: AgentState) -> Dict[str, Any]:
     seed_hash = int(hashlib.md5(construction_plan.encode()).hexdigest()[:8], 16) % (2**31)
     base_seed = seed_hash  # Use same base seed for all steps
     
+    # Get the final product image URL for visual consistency
+    final_image_url = state.get("final_image_url")
+    
     assembly_images = []
     previous_image_url = None
     previous_step_description = None
@@ -632,6 +656,14 @@ def node_assembly_manual_generator(state: AgentState) -> Dict[str, Any]:
                 # Add generic action context
                 enhanced_prompt = f"Performing assembly action: {step_prompt}"
         
+        # Add reference to final product image for visual consistency
+        final_image_note = ""
+        if final_image_url:
+            if i == 0:
+                final_image_note = f" Match the visual style, materials, colors, lighting, and aesthetic of the final product image (reference available). The assembly should progressively build toward that exact final appearance."
+            else:
+                final_image_note = f" Continue building toward the final product appearance. Match the visual style, materials, colors, and lighting of the final product image (reference available)."
+        
         # For steps after the first, add explicit continuity instructions
         if i > 0 and previous_step_description:
             # Ensure the prompt explicitly references maintaining the previous state
@@ -643,10 +675,10 @@ def node_assembly_manual_generator(state: AgentState) -> Dict[str, Any]:
         # Add consistency and action instructions for all steps
         if i == 0:
             # First step: establish the visual style with action focus
-            enhanced_prompt += " Professional technical illustration showing assembly action in progress. Consistent lighting from the front-left, neutral background, clear focus on assembly components. Show hands positioning components or tools being used."
+            enhanced_prompt += " Professional technical illustration showing assembly action in progress. Consistent lighting from the front-left, neutral background, clear focus on assembly components. Show hands positioning components or tools being used." + final_image_note
         else:
             # Subsequent steps: maintain consistency with action focus
-            enhanced_prompt += " Maintain identical lighting, perspective, and visual style as previous steps. Show the assembly action being performed with hands or tools visible. Only add new components without changing existing ones."
+            enhanced_prompt += " Maintain identical lighting, perspective, and visual style as previous steps. Show the assembly action being performed with hands or tools visible. Only add new components without changing existing ones." + final_image_note
         
         # Use a consistent seed with slight variation per step for reproducibility
         # Same base seed ensures similar style, slight variation prevents exact duplicates
