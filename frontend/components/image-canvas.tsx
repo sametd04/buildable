@@ -164,7 +164,7 @@ export function ImageCanvas({ images, currentImageIndex, onImageSelect, selected
         reactFlowInstance.fitView({ duration: 800, padding: 0.2 })
       }, 100)
     }
-  }, [images, selectedParents, setNodes, setEdges, reactFlowInstance])
+  }, [images, selectedParents, manuallyMinimized, setNodes, setEdges, reactFlowInstance])
 
   const handleNodeSelect = (index: number) => {
     if (!onParentSelect) return
