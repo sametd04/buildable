@@ -102,7 +102,7 @@ async def stream_conversation_response(
     llm = ChatOpenAI(
         model=settings.llm_model,
         api_key=settings.openai_api_key,
-        temperature=0.7,
+        temperature=0.3,  # Lower temperature for more focused responses
         streaming=True,  # Enable streaming
     )
     
@@ -119,28 +119,24 @@ async def stream_conversation_response(
     messages = []
     if len(conversation_history) == 0:
         # First message - add system prompt
-        system_prompt = f"""You are a friendly and helpful design consultant helping users create custom DIY furniture and structures.
+        system_prompt = f"""You gather info, then call RequiredData tool. NO explanations.
 
-CRITICAL: You MUST always ask about ALL of the following fields before calling the RequiredData tool. Ask about them systematically, one or two at a time:
+EXAMPLE 1:
+User: "build me a simple chair"
+Analysis: ✓ use_case (chair), ✓ dimensions (standard), ✓ style (simple)
+Action: Call RequiredData(use_case="chair", dimensions="standard adult chair size", style_preferences="simple and functional")
 
-1. **Use Case & Purpose**: What will this be used for? (e.g., workspace, storage, decoration)
-2. **Dimensions & Size**: Approximate size requirements (e.g., "fits in a corner", "desk height", "shelf width")
-3. **Style Preferences**: Aesthetic style, mood, colors, textures (e.g., industrial, minimalist, rustic, modern)
-4. **Material Preferences**: Any specific material preferences or constraints (e.g., wood type, metal finish) - optional but still ask
-5. **Personalization**: Any personal touches or specific requirements (e.g., "needs to match my existing furniture") - optional but still ask
-6. **Constraints**: Any space, budget, or functional constraints - optional but still ask
+EXAMPLE 2:
+User: "I need a shelf"
+Analysis: ✓ use_case (shelf), ✗ dimensions, ✗ style
+Action: Ask "What size and style do you prefer?"
 
-IMPORTANT RULES:
-- You MUST ask about all 6 fields, even if some are optional
-- Ask 1-2 questions at a time in a natural, friendly way
-- Don't be overwhelming - keep it conversational
-- Only call the RequiredData tool AFTER you have asked about all 6 fields and received responses
-- For optional fields (4-6), if the user says "none" or "no preference", you can leave them empty in the tool call
-- Required fields (1-3) must have actual answers from the user
+NOW YOUR TURN:
+User: "{user_query}"
 
-User's initial request: {user_query}
-
-Start by asking about the first 1-2 fields to begin gathering information."""
+If you have use_case + dimensions + style → Call RequiredData tool NOW
+If missing info → Ask ONE question (max 10 words)
+NEVER give building instructions or detailed plans."""
         messages.append(SystemMessage(content=system_prompt))
         messages.append(HumanMessage(content=user_query))
     else:
@@ -459,3 +455,129 @@ async def generate_assembly_manual(request: GenerateAssemblyManualRequest) -> Ge
             assembly_manual_images=[],
             error=f"Assembly manual generation failed: {str(e)}\n\nTraceback:\n{error_trace}",
         )
+
+
+
+@router.get("/build-stream")
+async def build_stream(
+    user_query: str,
+    previous_style_description: str = "",
+    previous_image_url: str = ""
+):
+    """
+    GET /build-stream endpoint with Server-Sent Events (SSE).
+    
+    Streams progress updates as the workflow executes.
+    Each event contains the current state and progress information.
+    """
+    async def event_generator():
+        try:
+            print(f"🚀 Starting build-stream with query: '{user_query}'")
+            
+            # Validate user_query
+            if not user_query or user_query.strip() == "":
+                error_msg = "user_query is required and cannot be empty"
+                print(f"❌ Error: {error_msg}")
+                yield f"data: {json.dumps({'type': 'error', 'error': error_msg})}\n\n"
+                return
+            
+            # Initialize state
+            initial_state: AgentState = {
+                "user_query": user_query,
+                "style_description": previous_style_description or "",
+                "construction_plan": None,
+                "selected_item_ids": [],
+                "flux_prompt": None,
+                "final_image_url": None,
+                "assembly_manual_prompts": [],
+                "assembly_manual_images": [],
+                "retry_count": 0,
+                "clerk_feedback": None,
+                "status": "processing",
+                "is_clerk_successful": False,
+            }
+            
+            print(f"📦 Initial state created")
+            
+            # Send initial event
+            yield f"data: {json.dumps({'type': 'start', 'message': 'Starting build process...'})}\n\n"
+            
+            # Get workflow
+            workflow = get_workflow()
+            print(f"🔧 Workflow initialized")
+            
+            # Stream workflow execution
+            node_names = {
+                "style_optimizer": "Style Optimizer: Expanding design vision...",
+                "planner": "Planner: Creating construction plan...",
+                "inventory_clerk": "Inventory Clerk: Searching for materials...",
+                "prompt_engineer": "Prompt Engineer: Optimizing image prompt...",
+                "flux_generator": "Flux Generator: Rendering image...",
+            }
+            
+            current_step = 0
+            total_steps = 5
+            
+            # Execute workflow with streaming
+            final_state = None
+            print(f"🔄 Starting workflow stream...")
+            for event in workflow.stream(initial_state):
+                # event is a dict with node name as key
+                for node_name, node_output in event.items():
+                    print(f"📍 Node: {node_name}")
+                    if node_name in node_names:
+                        current_step += 1
+                        print(f"✓ Step {current_step}/{total_steps}: {node_names[node_name]}")
+                        yield f"data: {json.dumps({'type': 'progress', 'step': current_step, 'total': total_steps, 'node': node_name, 'message': node_names[node_name]})}\n\n"
+                        
+                        # Send partial results if available
+                        if node_name == "style_optimizer" and node_output.get("style_description"):
+                            print(f"  → Style description generated")
+                            yield f"data: {json.dumps({'type': 'result', 'field': 'style_description', 'value': node_output['style_description']})}\n\n"
+                        elif node_name == "planner" and node_output.get("construction_plan"):
+                            print(f"  → Construction plan created")
+                            yield f"data: {json.dumps({'type': 'result', 'field': 'construction_plan', 'value': node_output['construction_plan']})}\n\n"
+                        elif node_name == "inventory_clerk" and node_output.get("selected_item_ids"):
+                            print(f"  → {len(node_output.get('selected_item_ids', []))} items selected")
+                            # Get full item details
+                            selected_items = [
+                                get_inventory_item_by_id(item_id)
+                                for item_id in node_output.get("selected_item_ids", [])
+                                if get_inventory_item_by_id(item_id) is not None
+                            ]
+                            yield f"data: {json.dumps({'type': 'result', 'field': 'selected_items', 'value': {'ids': node_output['selected_item_ids'], 'items': selected_items}})}\n\n"
+                        elif node_name == "flux_generator" and node_output.get("final_image_url"):
+                            print(f"  → Image generated: {node_output['final_image_url'][:50]}...")
+                            yield f"data: {json.dumps({'type': 'result', 'field': 'final_image_url', 'value': node_output['final_image_url']})}\n\n"
+                    
+                    # Keep track of final state
+                    final_state = node_output
+            
+            print(f"🏁 Workflow completed")
+            print(f"   Status: {final_state.get('status') if final_state else 'None'}")
+            print(f"   Has image: {bool(final_state.get('final_image_url')) if final_state else False}")
+            
+            # Send completion event
+            if final_state and (final_state.get("status") == "success" or final_state.get("final_image_url")):
+                print(f"✅ Build successful!")
+                yield f"data: {json.dumps({'type': 'complete', 'success': True, 'message': 'Build completed successfully!'})}\n\n"
+            else:
+                error_msg = final_state.get('clerk_feedback', 'Build failed') if final_state else 'Build failed'
+                print(f"❌ Build failed: {error_msg}")
+                yield f"data: {json.dumps({'type': 'complete', 'success': False, 'error': error_msg})}\n\n"
+                
+        except Exception as e:
+            error_trace = traceback.format_exc()
+            print(f"💥 Exception in build-stream: {str(e)}")
+            print(error_trace)
+            yield f"data: {json.dumps({'type': 'error', 'error': str(e), 'trace': error_trace})}\n\n"
+    
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",  # Disable nginx buffering
+        }
+    )

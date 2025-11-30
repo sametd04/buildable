@@ -26,7 +26,7 @@ def get_llm():
     llm = ChatOpenAI(
         model=settings.llm_model,
         api_key=settings.openai_api_key,
-        temperature=0.7,
+        temperature=0.3,  # Lower temperature for more focused responses
     )
     
     return llm
@@ -71,28 +71,24 @@ def node_conversation_agent(state: AgentState) -> Dict[str, Any]:
     messages = []
     if len(conversation_history) == 0:
         # First message - add system prompt
-        system_prompt = f"""You are a friendly and helpful design consultant helping users create custom DIY furniture and structures.
+        system_prompt = f"""You gather info, then call RequiredData tool. NO explanations.
 
-CRITICAL: You MUST always ask about ALL of the following fields before calling the RequiredData tool. Ask about them systematically, one or two at a time:
+EXAMPLE 1:
+User: "build me a simple chair"
+Analysis: ✓ use_case (chair), ✓ dimensions (standard), ✓ style (simple)
+Action: Call RequiredData(use_case="chair", dimensions="standard adult chair size", style_preferences="simple and functional")
 
-1. **Use Case & Purpose**: What will this be used for? (e.g., workspace, storage, decoration)
-2. **Dimensions & Size**: Approximate size requirements (e.g., "fits in a corner", "desk height", "shelf width")
-3. **Style Preferences**: Aesthetic style, mood, colors, textures (e.g., industrial, minimalist, rustic, modern)
-4. **Material Preferences**: Any specific material preferences or constraints (e.g., wood type, metal finish) - optional but still ask
-5. **Personalization**: Any personal touches or specific requirements (e.g., "needs to match my existing furniture") - optional but still ask
-6. **Constraints**: Any space, budget, or functional constraints - optional but still ask
+EXAMPLE 2:
+User: "I need a shelf"
+Analysis: ✓ use_case (shelf), ✗ dimensions, ✗ style
+Action: Ask "What size and style do you prefer?"
 
-IMPORTANT RULES:
-- You MUST ask about all 6 fields, even if some are optional
-- Ask 1-2 questions at a time in a natural, friendly way
-- Don't be overwhelming - keep it conversational
-- Only call the RequiredData tool AFTER you have asked about all 6 fields and received responses
-- For optional fields (4-6), if the user says "none" or "no preference", you can leave them empty in the tool call
-- Required fields (1-3) must have actual answers from the user
+NOW YOUR TURN:
+User: "{user_query}"
 
-User's initial request: {user_query}
-
-Start by asking about the first 1-2 fields to begin gathering information."""
+If you have use_case + dimensions + style → Call RequiredData tool NOW
+If missing info → Ask ONE question (max 10 words)
+NEVER give building instructions or detailed plans."""
         messages.append(SystemMessage(content=system_prompt))
         messages.append(HumanMessage(content=user_query))
     else:
@@ -153,8 +149,14 @@ Continue the conversation by asking about the remaining fields you haven't cover
     has_tool_call = False
     conversation_data = {}
     
+    print(f"🔍 Checking for tool calls in response...")
+    print(f"   Has tool_calls attribute: {hasattr(response, 'tool_calls')}")
+    if hasattr(response, "tool_calls"):
+        print(f"   Tool calls: {response.tool_calls}")
+    
     if hasattr(response, "tool_calls") and response.tool_calls:
         for tool_call in response.tool_calls:
+            print(f"   → Tool call found: {tool_call.get('name')}")
             if tool_call.get("name") == "RequiredData" or "RequiredData" in str(tool_call):
                 has_tool_call = True
                 args = tool_call.get("args", {})
@@ -166,12 +168,16 @@ Continue the conversation by asking about the remaining fields you haven't cover
                     "personalization": args.get("personalization", ""),
                     "constraints": args.get("constraints", ""),
                 }
+                print(f"✅ RequiredData tool called with: {conversation_data}")
                 # Add confirmation message
                 conversation_history.append({
                     "role": "assistant",
                     "content": "Great! I have enough information to create your design. Let me proceed with generating it...",
                 })
                 break
+    
+    if not has_tool_call:
+        print(f"❌ No RequiredData tool call found - staying in conversation mode")
     
     if has_tool_call:
         return {
