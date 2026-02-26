@@ -46,62 +46,62 @@ Return the **Revised Construction Assembly Plan** using the exact structure belo
 **Revised Construction Assembly Plan:**
 
 You will produce a two-part response for each assembly stage:  
-**Part A — Brief Explanation (high-level rationale)** and **Part B — Detailed Step List**.  
-_Do not include hidden/internal chain-of-thought._ The "Explanation" should be a short, clear description of purpose and design considerations (2–4 sentences). Then follow with the ordered steps. Each step must include the labeled fields shown below.
+**Part A â Brief Explanation (high-level rationale)** and **Part B â Detailed Step List**.  
+_Do not include hidden/internal chain-of-thought._ The "Explanation" should be a short, clear description of purpose and design considerations (2â4 sentences). Then follow with the ordered steps. Each step must include the labeled fields shown below.
 
 **General rules**
 - Focus on practical, do-it-yourself furniture assembly (benign household furniture).
 - Only list **conceptual parts** (no SKUs). Materials may be accepted as suitable substitutions when reasonable.
-- Use clear, numbered steps. Be moderately detailed — enough for an experienced DIYer to follow safely.
+- Use clear, numbered steps. Be moderately detailed â enough for an experienced DIYer to follow safely.
 - Use the exact field names and structure below for every step.
-- If a step is purely inspection/check (no new material), still include the fields and state “None” under Material used.
-- When describing locations, use relative references (e.g., “attach to the bottom of each vertical post,” “inner face of the front crossbar”) rather than proprietary terminations.
-- If safety or tool guidance is relevant, include a short “Notes / Safety” line in the step.
+- If a step is purely inspection/check (no new material), still include the fields and state âNoneâ under Material used.
+- When describing locations, use relative references (e.g., âattach to the bottom of each vertical post,â âinner face of the front crossbarâ) rather than proprietary terminations.
+- If safety or tool guidance is relevant, include a short âNotes / Safetyâ line in the step.
 
 ---
 
-## PART A — Explanation (per stage)
+## PART A â Explanation (per stage)
 **Example:**  
-**Explanation:** Short (2–4 sentences) description of what this stage achieves, key structural considerations (load paths, alignment, modularity), and acceptable substitution rules for materials.
+**Explanation:** Short (2â4 sentences) description of what this stage achieves, key structural considerations (load paths, alignment, modularity), and acceptable substitution rules for materials.
 
 ---
 
-## PART B — Detailed Steps (per stage)
+## PART B â Detailed Steps (per stage)
 For each numbered step include the following labeled fields **exactly**:
 
-**Step N — Title (one short sentence)**  
-- **Material used in this step:** [List materials and approximate quantity — e.g., "2 × vertical steel pipes (Length A), 4 × floor flanges"]  
-- **What is added / done:** [Describe precisely what is being added, fastened, or adjusted — e.g., "Mount each floor flange to the bottom end of the vertical pipe and secure with 4 wood screws through the flange into the pipe's base plate."]  
-- **Where (location & orientation):** [Describe exact placement and orientation — e.g., "Floor flanges attach to the bottom of each vertical pipe so the flange face sits flat on the floor, bolt holes aligned outward."]  
-- **Fasteners / connection method:** [Exact type of fastener/connection conceptually — e.g., "M8 bolts with lock washers" or "wood screws and glue"; if none, write "N/A".]  
+**Step N â Title (one short sentence)**  
+- **Material used in this step:** [List materials and approximate quantity â e.g., "2 Ã vertical steel pipes (Length A), 4 Ã floor flanges"]  
+- **What is added / done:** [Describe precisely what is being added, fastened, or adjusted â e.g., "Mount each floor flange to the bottom end of the vertical pipe and secure with 4 wood screws through the flange into the pipe's base plate."]  
+- **Where (location & orientation):** [Describe exact placement and orientation â e.g., "Floor flanges attach to the bottom of each vertical pipe so the flange face sits flat on the floor, bolt holes aligned outward."]  
+- **Fasteners / connection method:** [Exact type of fastener/connection conceptually â e.g., "M8 bolts with lock washers" or "wood screws and glue"; if none, write "N/A".]  
 - **Tools suggested:** [Short list: e.g., "drill with bit, adjustable wrench, spirit level"]  
-- **Approx. time:** [Estimated minutes for this single step — e.g., "10–15 minutes"]  
-- **Why this step matters / tolerances:** [1–2 sentences explaining the structural purpose and acceptable tolerances — e.g., "Ensures vertical alignment; keep pipe plumb within 2° for even load distribution."]  
-- **Notes / Safety:** [Optional short note — e.g., "Wear eye protection; pre-drill pilot holes to avoid wood splitting."]
+- **Approx. time:** [Estimated minutes for this single step â e.g., "10â15 minutes"]  
+- **Why this step matters / tolerances:** [1â2 sentences explaining the structural purpose and acceptable tolerances â e.g., "Ensures vertical alignment; keep pipe plumb within 2Â° for even load distribution."]  
+- **Notes / Safety:** [Optional short note â e.g., "Wear eye protection; pre-drill pilot holes to avoid wood splitting."]
 
-Repeat the above block for every sequential action needed to complete the stage. Use clear, actionable verbs and avoid ambiguous phrasing like “do the usual.” Where possible, give approximate measurements, quantities, or tolerances rather than vague words.
+Repeat the above block for every sequential action needed to complete the stage. Use clear, actionable verbs and avoid ambiguous phrasing like âdo the usual.â Where possible, give approximate measurements, quantities, or tolerances rather than vague words.
 
 ---
 
 ### Apply this format to the following four stages (produce for each stage: Part A then Part B):
 
-1. **Base Assembly & Support Structure** — main vertical load-bearing elements.  
-2. **Primary Horizontal Framing** — main framework and rigidity.  
-3. **Shelf / Surface Integration** — attach shelves or tabletops.  
-4. **Final Details & Stability Checks** — finishers, leveling, and verification.
+1. **Base Assembly & Support Structure** â main vertical load-bearing elements.  
+2. **Primary Horizontal Framing** â main framework and rigidity.  
+3. **Shelf / Surface Integration** â attach shelves or tabletops.  
+4. **Final Details & Stability Checks** â finishers, leveling, and verification.
 
 ---
 
 ### Short example (one step) to show exact formatting:
 
-**Step 1 — Attach floor flanges to vertical supports**  
-- **Material used in this step:** 4 × floor flanges, 4 × vertical pipes (Length A)  
+**Step 1 â Attach floor flanges to vertical supports**  
+- **Material used in this step:** 4 Ã floor flanges, 4 Ã vertical pipes (Length A)  
 - **What is added / done:** Secure each floor flange to the bottom of a vertical pipe by inserting the pipe into the flange collar and tightening the flange set screws.  
 - **Where (location & orientation):** Flanges sit on the floor with their flat face downward; pipes extend upward from flange collars.  
 - **Fasteners / connection method:** Set screws in flange collar; optionally M6 bolts through flange holes into a wooden base.  
 - **Tools suggested:** Hex key, adjustable wrench, tape measure, spirit level  
 - **Approx. time:** 10 minutes (per flange)  
-- **Why this step matters / tolerances:** Provides a stable base; ensure each flange is seated flush and the pipe is plumb within ~2° to avoid racking.  
+- **Why this step matters / tolerances:** Provides a stable base; ensure each flange is seated flush and the pipe is plumb within ~2Â° to avoid racking.  
 - **Notes / Safety:** Wear gloves; tighten set screws evenly to avoid misalignment.
 
 ---

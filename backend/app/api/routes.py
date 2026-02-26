@@ -253,18 +253,18 @@ async def build(request: BuildRequest) -> BuildResponse:
         previous_image_url = request.previous_image_url
         if request.previous_image_urls and len(request.previous_image_urls) > 0:
             from app.utils.compose_images import compose_and_upload_images
-            print(f"🖼️  Composing {len(request.previous_image_urls)} parent images...")
+            print(f"ð¼ï¸  Composing {len(request.previous_image_urls)} parent images...")
             composed_url = compose_and_upload_images(request.previous_image_urls)
             if composed_url:
                 previous_image_url = composed_url
-                print(f"✅ Composed image URL: {composed_url[:60]}...")
+                print(f"â Composed image URL: {composed_url[:60]}...")
             else:
                 # Fallback to single image if composition fails
                 if request.previous_image_url:
                     previous_image_url = request.previous_image_url
                 elif len(request.previous_image_urls) == 1:
                     previous_image_url = request.previous_image_urls[0]
-                print(f"⚠️  Failed to compose images, using fallback")
+                print(f"â ï¸  Failed to compose images, using fallback")
         
         initial_state: AgentState = {
             "user_query": user_query,

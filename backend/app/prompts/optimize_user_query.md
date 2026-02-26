@@ -1,6 +1,6 @@
 # Query Optimization Agent for DIY Furniture Descriptions
 
-Your task is to take the user's raw request — consisting of free text and **reference images** — and transform it into a detailed, production-ready style description for **Do-It-Yourself (DIY) furniture made from structural parts (e.g., pipes, connectors, boards).**
+Your task is to take the user's raw request â consisting of free text and **reference images** â and transform it into a detailed, production-ready style description for **Do-It-Yourself (DIY) furniture made from structural parts (e.g., pipes, connectors, boards).**
 
 ---
 

@@ -16,7 +16,7 @@ def download_image(url: str) -> Image.Image:
             return Image.open(io.BytesIO(resp.content)).convert("RGB")
         except requests.exceptions.HTTPError as e:
             if resp.status_code == 403:
-                raise  # forbidden, don’t retry
+                raise  # forbidden, donât retry
             time.sleep(1)
 
 
@@ -71,7 +71,7 @@ def compose_images(urls: list[str], max_single_size: int = 512) -> Image.Image:
         new_h = round_to_multiple_of_16(int(combined.height * scale))
         combined = combined.resize((new_w, new_h), Image.LANCZOS)
 
-    # --- Enforce minimum size 64×64
+    # --- Enforce minimum size 64Ã64
     if combined.width < 64 or combined.height < 64:
         combined = combined.resize(
             (
@@ -135,20 +135,20 @@ def upload_image_to_hosting(img: Image.Image, format: str = "JPEG") -> Optional[
                     data = response.json()
                     if data.get('success') and data.get('data', {}).get('url'):
                         uploaded_url = data['data']['url']
-                        print(f"✅ Uploaded composed image to imgbb.com: {uploaded_url[:60]}...")
+                        print(f"â Uploaded composed image to imgbb.com: {uploaded_url[:60]}...")
                         return uploaded_url
             except Exception as e:
-                print(f"⚠️  imgbb.com upload failed: {e}, trying fallback...")
+                print(f"â ï¸  imgbb.com upload failed: {e}, trying fallback...")
         
         # Fallback: Use data URL (FLUX API may or may not accept this)
         # This is a temporary solution - for production, configure imgbb.com API key
         data_url = f"data:image/{format.lower()};base64,{img_base64}"
-        print(f"⚠️  Using data URL fallback (FLUX API may not accept this)")
-        print(f"💡 Tip: Configure IMGBB_API_KEY in .env for proper image hosting")
+        print(f"â ï¸  Using data URL fallback (FLUX API may not accept this)")
+        print(f"ð¡ Tip: Configure IMGBB_API_KEY in .env for proper image hosting")
         return data_url
         
     except Exception as e:
-        print(f"⚠️  Failed to upload composed image: {e}")
+        print(f"â ï¸  Failed to upload composed image: {e}")
         import traceback
         traceback.print_exc()
         return None
@@ -173,7 +173,7 @@ def compose_and_upload_images(urls: list[str], max_single_size: int = 512) -> Op
         uploaded_url = upload_image_to_hosting(composed_img)
         return uploaded_url
     except Exception as e:
-        print(f"⚠️  Failed to compose and upload images: {e}")
+        print(f"â ï¸  Failed to compose and upload images: {e}")
         return None
 
 

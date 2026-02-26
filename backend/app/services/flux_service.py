@@ -59,15 +59,15 @@ def generate_image(
         )
     """
     if not prompt:
-        print("⚠️  No prompt provided")
+        print("â ï¸  No prompt provided")
         return None
     
     if not material_image_url:
-        print("⚠️  No material_image_url provided")
+        print("â ï¸  No material_image_url provided")
         return None
     
     if not settings.bfl_api_key:
-        print("⚠️  BFL_API_KEY not set")
+        print("â ï¸  BFL_API_KEY not set")
         return None
     
     try:
@@ -76,12 +76,12 @@ def generate_image(
         
         # Determine generation mode
         if previous_image_url:
-            print(f"🔄 Iterative mode: Editing previous image with materials")
+            print(f"ð Iterative mode: Editing previous image with materials")
             print(f"   Previous: {previous_image_url[:60]}...")
         else:
-            print(f"🎨 Initial mode: Generating from materials")
+            print(f"ð¨ Initial mode: Generating from materials")
         
-        print(f"📤 Submitting to {settings.flux_model}...")
+        print(f"ð¤ Submitting to {settings.flux_model}...")
         print(f"   Materials: {material_image_url[:60]}...")
         
         # Build request payload according to FLUX 2 Image Editing API
@@ -111,7 +111,7 @@ def generate_image(
         # Add optional seed
         if seed is not None:
             request_json['seed'] = seed
-            print(f"🎲 Using seed: {seed}")
+            print(f"ð² Using seed: {seed}")
         
         response = requests.post(
             api_url,
@@ -124,7 +124,7 @@ def generate_image(
         )
         
         if response.status_code != 200:
-            print(f"❌ FLUX API error: {response.status_code} - {response.text}")
+            print(f"â FLUX API error: {response.status_code} - {response.text}")
             return None
         
         data = response.json()
@@ -132,14 +132,14 @@ def generate_image(
         polling_url = data.get('polling_url')
         
         if not request_id:
-            print(f"❌ No request ID in response: {data}")
+            print(f"â No request ID in response: {data}")
             return None
         
         # Use provided polling_url or construct default
         if not polling_url:
             polling_url = f'https://api.bfl.ai/v1/get_result?id={request_id}'
         
-        print(f"⏳ Request ID: {request_id}, polling for result...")
+        print(f"â³ Request ID: {request_id}, polling for result...")
         
         # Poll for result (max 120 seconds for FLUX 2)
         max_attempts = 240  # 120 seconds with 0.5s intervals
@@ -162,26 +162,26 @@ def generate_image(
             if status == 'Ready':
                 image_url = result.get('result', {}).get('sample')
                 if image_url:
-                    print(f"✅ FLUX image generated: {image_url}")
+                    print(f"â FLUX image generated: {image_url}")
                     return image_url
                 else:
-                    print(f"⚠️  No image URL in result: {result}")
+                    print(f"â ï¸  No image URL in result: {result}")
                     return None
             
             elif status in ['Error', 'Failed']:
                 error_msg = result.get('error', 'Unknown error')
-                print(f"❌ Generation failed: {error_msg}")
+                print(f"â Generation failed: {error_msg}")
                 return None
             
             # Status is still 'Pending' or other, continue polling
             if attempt % 10 == 0:
                 print(f"Still waiting... ({attempt * 0.5}s)")
         
-        print(f"⏰ Timeout after {max_attempts * 0.5}s")
+        print(f"â° Timeout after {max_attempts * 0.5}s")
         return None
         
     except Exception as e:
-        print(f"❌ FLUX generation error: {e}")
+        print(f"â FLUX generation error: {e}")
         import traceback
         traceback.print_exc()
         return None

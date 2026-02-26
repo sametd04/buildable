@@ -109,7 +109,7 @@ def seed_database():
             has_embedding = "embedding" in item and len(item.get("embedding", [])) > 0
             print(f"  - {item.get('name', 'Unknown')} (id: {item.get('id', 'N/A')}, embedding: {has_embedding})")
         
-        print("\n⚠️  IMPORTANT: Make sure to create a vector search index in MongoDB Atlas!")
+        print("\nâ ï¸  IMPORTANT: Make sure to create a vector search index in MongoDB Atlas!")
         print("   See the comment in app/core/database.py for the index schema.")
         
     except Exception as e:

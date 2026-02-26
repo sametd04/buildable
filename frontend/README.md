@@ -47,15 +47,15 @@ The frontend provides a dashboard interface where users can:
 
 ```
 frontend/
-├── app/
-│   └── page.tsx              # Main dashboard page
-├── components/
-│   ├── agent-command-center.tsx  # Input and message display
-│   ├── assembly-workbench.tsx     # Image and plan display
-│   └── warehouse.tsx              # Material inventory display
-├── lib/
-│   └── api.ts                # Backend API client
-└── ...
+âââ app/
+â   âââ page.tsx              # Main dashboard page
+âââ components/
+â   âââ agent-command-center.tsx  # Input and message display
+â   âââ assembly-workbench.tsx     # Image and plan display
+â   âââ warehouse.tsx              # Material inventory display
+âââ lib/
+â   âââ api.ts                # Backend API client
+âââ ...
 ```
 
 ## API Integration

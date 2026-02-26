@@ -149,13 +149,13 @@ export default function BuildableDashboard() {
                   : "Build failed - see details below",
                 steps: response.success
                   ? [
-                    "✓ Style description generated",
-                    "✓ Construction plan created",
-                    `✓ ${response.selected_item_ids.length} materials selected`,
-                    "✓ Image prompt optimized",
-                    response.final_image_url ? "✓ Image generated" : "⏳ Image generation in progress",
+                    "â Style description generated",
+                    "â Construction plan created",
+                    `â ${response.selected_item_ids.length} materials selected`,
+                    "â Image prompt optimized",
+                    response.final_image_url ? "â Image generated" : "â³ Image generation in progress",
                   ]
-                  : [`✗ Error: ${response.error || "Unknown error"}`],
+                  : [`â Error: ${response.error || "Unknown error"}`],
               }
               : msg,
           )
@@ -330,11 +330,11 @@ export default function BuildableDashboard() {
                         ...msg,
                         content: "Build completed successfully!",
                         steps: [
-                          "✓ Style description generated",
-                          "✓ Construction plan created",
-                          `✓ ${workflowResponse.selected_item_ids.length} materials selected`,
-                          "✓ Image prompt optimized",
-                          workflowResponse.final_image_url ? "✓ Image generated" : "⏳ Image generation in progress",
+                          "â Style description generated",
+                          "â Construction plan created",
+                          `â ${workflowResponse.selected_item_ids.length} materials selected`,
+                          "â Image prompt optimized",
+                          workflowResponse.final_image_url ? "â Image generated" : "â³ Image generation in progress",
                         ],
                       }
                       : msg,
@@ -358,7 +358,7 @@ export default function BuildableDashboard() {
                       ? {
                         ...msg,
                         content: "Build failed - see details below",
-                        steps: [`✗ Error: ${workflowResponse.error || "Unknown error"}`],
+                        steps: [`â Error: ${workflowResponse.error || "Unknown error"}`],
                       }
                       : msg,
                   )

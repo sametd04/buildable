@@ -74,26 +74,26 @@ Generate a construction plan and image from a user query.
 
 ```
 backend/
-├── app/
-│   ├── api/
-│   │   ├── routes.py      # API endpoints
-│   │   └── schemas.py     # Pydantic models
-│   ├── core/
-│   │   ├── config.py      # Configuration
-│   │   └── database.py    # MongoDB connection and inventory operations
-│   ├── graph/
-│   │   ├── state.py       # AgentState definition
-│   │   ├── nodes.py       # Agent logic
-│   │   └── workflow.py    # Compiled StateGraph
-│   ├── services/
-│   │   └── flux_service.py # FLUX API mock
-│   └── main.py            # FastAPI app
-├── data/
-│   └── inventory.json     # Inventory seed data
-├── scripts/
-│   └── seed_db.py         # Database seeding script
-├── requirements.txt
-└── env.example
+âââ app/
+â   âââ api/
+â   â   âââ routes.py      # API endpoints
+â   â   âââ schemas.py     # Pydantic models
+â   âââ core/
+â   â   âââ config.py      # Configuration
+â   â   âââ database.py    # MongoDB connection and inventory operations
+â   âââ graph/
+â   â   âââ state.py       # AgentState definition
+â   â   âââ nodes.py       # Agent logic
+â   â   âââ workflow.py    # Compiled StateGraph
+â   âââ services/
+â   â   âââ flux_service.py # FLUX API mock
+â   âââ main.py            # FastAPI app
+âââ data/
+â   âââ inventory.json     # Inventory seed data
+âââ scripts/
+â   âââ seed_db.py         # Database seeding script
+âââ requirements.txt
+âââ env.example
 ```
 
 ## Development

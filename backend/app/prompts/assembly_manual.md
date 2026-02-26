@@ -73,13 +73,13 @@ color_palette: #007AFF for arrows."
 
 ## CRITICAL PROMPTING RULES
 
-- ❌ **NEVER**: "a person building", "hands attaching", "using a tool", "someone assembling"
-- ✅ **ALWAYS**: "parts floating", "components aligning", "ghosted action", "autonomous movement"
-- ✅ **ALWAYS**: Include "#007AFF" for arrows in color_palette
-- ✅ **ALWAYS**: Use "upside down" context for attachment steps
-- ✅ **ALWAYS**: Use "floating in line with assembly axis" for alignment
-- ✅ **ALWAYS**: Reference the final product image for style consistency
-- ✅ **ALWAYS**: Include material textures and colors from selected items
+- â **NEVER**: "a person building", "hands attaching", "using a tool", "someone assembling"
+- â **ALWAYS**: "parts floating", "components aligning", "ghosted action", "autonomous movement"
+- â **ALWAYS**: Include "#007AFF" for arrows in color_palette
+- â **ALWAYS**: Use "upside down" context for attachment steps
+- â **ALWAYS**: Use "floating in line with assembly axis" for alignment
+- â **ALWAYS**: Reference the final product image for style consistency
+- â **ALWAYS**: Include material textures and colors from selected items
 
 ## OUTPUT FORMAT
 
