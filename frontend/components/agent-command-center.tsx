@@ -121,9 +121,9 @@ export function AgentCommandCenter({
                           {/* Progress Bar */}
                           {msg.steps && msg.steps.length > 0 && (() => {
                             const completedCount = msg.steps.filter(s =>
-                              s.startsWith('✓') || s.includes('completed') || s.includes('generated') || s.includes('created') || s.includes('selected')
+                              s.startsWith('â') || s.includes('completed') || s.includes('generated') || s.includes('created') || s.includes('selected')
                             ).length
-                            const failedCount = msg.steps.filter(s => s.startsWith('✗') || s.toLowerCase().includes('error')).length
+                            const failedCount = msg.steps.filter(s => s.startsWith('â') || s.toLowerCase().includes('error')).length
 
                             return (
                               <div className="mb-4">
@@ -149,13 +149,13 @@ export function AgentCommandCenter({
 
                           {/* Steps */}
                           {msg.steps?.map((step, idx) => {
-                            const isComplete = step.startsWith('✓') ||
+                            const isComplete = step.startsWith('â') ||
                               step.includes('completed') ||
                               step.includes('generated') ||
                               step.includes('created') ||
                               step.includes('selected')
-                            const isFailed = step.startsWith('✗') || step.toLowerCase().includes('error')
-                            const isInProgress = step.startsWith('⏳') || step.includes('...')
+                            const isFailed = step.startsWith('â') || step.toLowerCase().includes('error')
+                            const isInProgress = step.startsWith('â³') || step.includes('...')
 
                             // Determine icon based on step content
                             let StepIcon = Terminal
@@ -177,7 +177,7 @@ export function AgentCommandCenter({
                                     <CheckCircle2 className="w-4 h-4 text-primary animate-in zoom-in duration-300" />
                                   ) : isFailed ? (
                                     <div className="w-4 h-4 rounded-full bg-red-500 flex items-center justify-center">
-                                      <span className="text-white text-xs">✗</span>
+                                      <span className="text-white text-xs">â</span>
                                     </div>
                                   ) : isInProgress ? (
                                     <Loader2 className="w-4 h-4 text-primary animate-spin" />
@@ -192,7 +192,7 @@ export function AgentCommandCenter({
                                     isFailed ? 'text-red-500' :
                                       'text-muted-foreground'
                                     }`}>
-                                    {step.replace(/^[✓✗⏳]\s*/, '')}
+                                    {step.replace(/^[âââ³]\s*/, '')}
                                   </p>
                                 </div>
                               </div>

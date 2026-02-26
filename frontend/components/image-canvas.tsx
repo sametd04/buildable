@@ -229,7 +229,7 @@ export function ImageCanvas({ images, currentImageIndex, onImageSelect, selected
         </Panel>
         {showError && (
           <Panel position="top-center" className="bg-red-500 text-white border border-red-600 rounded p-3 shadow-lg">
-            <p className="text-sm font-semibold">⚠️ Maximum 3 images can be selected as context</p>
+            <p className="text-sm font-semibold">â ï¸ Maximum 3 images can be selected as context</p>
           </Panel>
         )}
       </ReactFlow>

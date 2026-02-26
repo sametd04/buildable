@@ -135,7 +135,7 @@ export function Warehouse({
           ) : filteredItems.length > 0 ? (
             filteredItems.map((item) => {
               // Extract price from description
-              const priceMatch = item.description?.match(/Price:\s*([\d.,]+)\s*€/)
+              const priceMatch = item.description?.match(/Price:\s*([\d.,]+)\s*â¬/)
               const price = priceMatch ? priceMatch[1] : null
 
               return (
@@ -174,7 +174,7 @@ export function Warehouse({
                             <Check className="w-2.5 h-2.5 text-primary-foreground" />
                           </div>
                         ) : price ? (
-                          <span className="text-xs font-bold text-primary">{price}€</span>
+                          <span className="text-xs font-bold text-primary">{price}â¬</span>
                         ) : null}
                       </div>
                     </div>
@@ -203,7 +203,7 @@ export function Warehouse({
         <DialogContent onClose={() => setSelectedItemForDetails(null)}>
           {selectedItemForDetails && (() => {
             // Extract price from description
-            const priceMatch = selectedItemForDetails.description?.match(/Price:\s*([\d.,]+)\s*€/)
+            const priceMatch = selectedItemForDetails.description?.match(/Price:\s*([\d.,]+)\s*â¬/)
             const price = priceMatch ? priceMatch[1] : null
 
             return (
@@ -214,7 +214,7 @@ export function Warehouse({
                     <div className="flex items-center gap-2 mt-2">
                       <DialogDescription className="text-base">{selectedItemForDetails.category || "Uncategorized"}</DialogDescription>
                       {price && (
-                        <span className="text-lg font-bold text-primary">{price} €</span>
+                        <span className="text-lg font-bold text-primary">{price} â¬</span>
                       )}
                     </div>
                   </div>
@@ -267,7 +267,7 @@ export function Warehouse({
                           : "border-border bg-card hover:border-primary hover:shadow-md text-foreground"
                         }`}
                     >
-                      {selectedItems.includes(selectedItemForDetails.id) ? "✓ Selected" : "Select Item"}
+                      {selectedItems.includes(selectedItemForDetails.id) ? "â Selected" : "Select Item"}
                     </button>
                     <button
                       onClick={() => handleDeleteItem(selectedItemForDetails.id)}

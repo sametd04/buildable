@@ -4,7 +4,7 @@
 
 Buildable is a full-stack application that uses a multi-agent AI system to help users create custom DIY furniture and structures. Simply describe what you want to build (e.g., "Cyberpunk Throne"), and the system will generate a detailed construction plan, select materials from inventory, and create photorealistic visualizations.
 
-## 🎯 Features
+## ð¯ Features
 
 - **Conversational Design Assistant**: Interactive conversation to gather requirements (use case, dimensions, style, materials, etc.)
 - **AI-Powered Planning**: Multi-agent workflow that transforms vague ideas into detailed construction plans
@@ -13,7 +13,7 @@ Buildable is a full-stack application that uses a multi-agent AI system to help 
 - **Assembly Manual Generation**: Creates step-by-step assembly instructions with images
 - **Modern Web Interface**: Beautiful Next.js dashboard with real-time updates
 
-## 🏗️ Architecture
+## ðï¸ Architecture
 
 Buildable consists of two main components:
 
@@ -31,7 +31,7 @@ Buildable consists of two main components:
 - **shadcn/ui** components
 - Real-time updates via Server-Sent Events (SSE)
 
-## 🤖 Multi-Agent Workflow
+## ð¤ Multi-Agent Workflow
 
 The system uses a LangGraph-based workflow with specialized AI agents:
 
@@ -44,7 +44,7 @@ The system uses a LangGraph-based workflow with specialized AI agents:
 
 The workflow includes feedback loops - if materials can't be found, the Planner revises the plan and tries again.
 
-## 🚀 Quick Start
+## ð Quick Start
 
 ### Prerequisites
 
@@ -132,7 +132,7 @@ The API will be available at `http://localhost:8000`
 
 The frontend will be available at `http://localhost:3000`
 
-## 📖 API Documentation
+## ð API Documentation
 
 ### Main Endpoints
 
@@ -180,32 +180,32 @@ Test FLUX image generation directly.
 
 See the [Backend README](backend/README.md) for detailed API documentation.
 
-## 🗂️ Project Structure
+## ðï¸ Project Structure
 
 ```
 buildable/
-├── backend/                 # FastAPI backend
-│   ├── app/
-│   │   ├── api/            # API routes and schemas
-│   │   ├── core/           # Configuration and database
-│   │   ├── graph/          # LangGraph workflow and nodes
-│   │   ├── services/       # External service integrations
-│   │   ├── utils/          # Utility functions
-│   │   └── main.py         # FastAPI app entry point
-│   ├── data/               # Seed data
-│   ├── scripts/            # Utility scripts
-│   └── requirements.txt    # Python dependencies
-│
-├── frontend/               # Next.js frontend
-│   ├── app/                # Next.js app directory
-│   ├── components/         # React components
-│   ├── lib/                # Utilities and API client
-│   └── package.json        # Node dependencies
-│
-└── README.md               # This file
+âââ backend/                 # FastAPI backend
+â   âââ app/
+â   â   âââ api/            # API routes and schemas
+â   â   âââ core/           # Configuration and database
+â   â   âââ graph/          # LangGraph workflow and nodes
+â   â   âââ services/       # External service integrations
+â   â   âââ utils/          # Utility functions
+â   â   âââ main.py         # FastAPI app entry point
+â   âââ data/               # Seed data
+â   âââ scripts/            # Utility scripts
+â   âââ requirements.txt    # Python dependencies
+â
+âââ frontend/               # Next.js frontend
+â   âââ app/                # Next.js app directory
+â   âââ components/         # React components
+â   âââ lib/                # Utilities and API client
+â   âââ package.json        # Node dependencies
+â
+âââ README.md               # This file
 ```
 
-## 🔧 Configuration
+## ð§ Configuration
 
 ### Environment Variables
 
@@ -223,7 +223,7 @@ buildable/
 
 See `backend/env.example` for all available options.
 
-## 🧪 Development
+## ð§ª Development
 
 ### Backend Development
 - API docs available at `/docs` (Swagger UI) or `/redoc`
@@ -235,20 +235,20 @@ See `backend/env.example` for all available options.
 - TypeScript for type safety
 - ESLint for code quality
 
-## 📝 License
+## ð License
 
 This project was created for a hackathon. See individual component READMEs for more details.
 
-## 📚 Additional Documentation
+## ð Additional Documentation
 
 - [Backend README](backend/README.md) - Detailed backend documentation
 - [Frontend README](frontend/README.md) - Detailed frontend documentation
 
-## 🤝 Contributing
+## ð¤ Contributing
 
 This is a hackathon project. Contributions and improvements are welcome!
 
-## 🐛 Troubleshooting
+## ð Troubleshooting
 
 ### Backend Issues
 - **MongoDB connection errors**: Ensure MongoDB is running and `MONGO_URI` is correct
@@ -262,5 +262,5 @@ This is a hackathon project. Contributions and improvements are welcome!
 
 ---
 
-**Built with ❤️ for the hackathon**
+**Built with â¤ï¸ for the hackathon**
 

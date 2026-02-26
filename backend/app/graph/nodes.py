@@ -631,7 +631,7 @@ def node_assembly_manual_prompt_engineer(state: AgentState) -> Dict[str, Any]:
         # Convert pydantic objects to dicts for state storage
         assembly_steps = [step.model_dump() for step in result.steps]
     except Exception as e:
-        print(f"⚠️ Structured output failed: {e}")
+        print(f"â ï¸ Structured output failed: {e}")
         import traceback
         traceback.print_exc()
         assembly_steps = []
@@ -739,7 +739,7 @@ def composite_layers(layers_data: List[Dict], layer_images: Dict[str, Image.Imag
             draw.text((x_center - (text_width // 2), paste_y + new_height + 5), label, fill="black", font=small_font)
             
         else:
-            print(f"⚠️ Missing image for layer: {item_name}")
+            print(f"â ï¸ Missing image for layer: {item_name}")
             
     # Convert to base64
     buffered = BytesIO()
@@ -772,15 +772,15 @@ def node_assembly_manual_generator(state: AgentState) -> Dict[str, Any]:
     final_image_url = state.get("final_image_url")
     
     # Generate full step images directly
-    print(f"📸 Generating {len(assembly_steps)} assembly step images...")
+    print(f"ð¸ Generating {len(assembly_steps)} assembly step images...")
     assembly_images = []
     
     for i, step in enumerate(assembly_steps):
-        print(f"📸 Generating step {i+1}/{len(assembly_steps)}: {step.get('instruction', '')[:50]}...")
+        print(f"ð¸ Generating step {i+1}/{len(assembly_steps)}: {step.get('instruction', '')[:50]}...")
         try:
             step_prompt = step.get("step_prompt", "")
             if not step_prompt:
-                print(f"⚠️ No step_prompt for step {i+1}, skipping")
+                print(f"â ï¸ No step_prompt for step {i+1}, skipping")
                 assembly_images.append("")
                 continue
             
@@ -802,13 +802,13 @@ def node_assembly_manual_generator(state: AgentState) -> Dict[str, Any]:
             
             if image_url:
                 assembly_images.append(image_url)
-                print(f"✅ Generated step {i+1} image")
+                print(f"â Generated step {i+1} image")
             else:
-                print(f"❌ Failed to generate step {i+1} image")
+                print(f"â Failed to generate step {i+1} image")
                 assembly_images.append("")
                 
         except Exception as e:
-            print(f"❌ Error generating step {i+1}: {e}")
+            print(f"â Error generating step {i+1}: {e}")
             import traceback
             traceback.print_exc()
             assembly_images.append("")
